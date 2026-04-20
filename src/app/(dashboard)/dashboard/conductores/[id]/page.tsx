@@ -155,10 +155,11 @@ export default async function DriverDetailPage({
               </div>
             )}
             {driver.license_type && (
-              <div>
+              <div className="col-span-2 md:col-span-1">
                 <p className="text-xs text-gray-400 uppercase tracking-wide">Tipo Licencia</p>
-                <p className="font-semibold text-gray-800 mt-0.5">
-                  {LICENSE_TYPE_LABELS[driver.license_type] ?? driver.license_type}
+                <p className="font-semibold text-gray-800 mt-0.5 text-sm">
+                  <span className="font-bold">{driver.license_type}</span>
+                  {LICENSE_TYPE_LABELS[driver.license_type] ? ` — ${LICENSE_TYPE_LABELS[driver.license_type].split("—")[1]?.trim()}` : ""}
                 </p>
               </div>
             )}
@@ -230,7 +231,7 @@ export default async function DriverDetailPage({
             Sin documentos subidos. Ingresa al vehículo asignado para agregar documentos.
           </p>
         ) : (
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
             {docs.map(({ key, label }) => {
               const url = driver[key as keyof typeof driver] as string;
               return (
