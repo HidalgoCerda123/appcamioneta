@@ -132,7 +132,7 @@ export default function MobileNav({ profile }: { profile: Profile | null }) {
       )}
 
       {/* Barra de navegación inferior */}
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-30 flex items-stretch">
+      <nav className="mobile-nav md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-30 flex items-stretch shadow-[0_-2px_10px_rgba(0,0,0,0.08)]">
         {mainItems.map(({ href, label, icon: Icon }) => {
           const isActive =
             href === "/dashboard"

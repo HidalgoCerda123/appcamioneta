@@ -35,3 +35,8 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* iOS safe area support */
+.mobile-nav {
+  padding-bottom: env(safe-area-inset-bottom);
+}
