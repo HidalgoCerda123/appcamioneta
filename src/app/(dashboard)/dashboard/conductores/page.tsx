@@ -73,45 +73,40 @@ export default async function ConductoresPage({
               <Link
                 key={d.id}
                 href={`/dashboard/conductores/${d.id}`}
-                className="flex items-center justify-between px-5 py-4 hover:bg-gray-50 transition group"
+                className="flex items-start gap-4 px-5 py-4 hover:bg-gray-50 transition group"
               >
-                <div className="flex items-center gap-4">
-                  <div className="w-10 h-10 rounded-full bg-construserv-orange flex items-center justify-center text-white font-bold text-sm flex-shrink-0">
-                    {d.driver_name.charAt(0).toUpperCase()}
-                  </div>
-                  <div>
-                    <p className="font-semibold text-gray-900 group-hover:text-construserv-orange transition">
-                      {d.driver_name}
-                    </p>
-                    <div className="flex flex-wrap gap-3 mt-0.5">
-                      {d.driver_rut && (
-                        <span className="text-xs text-gray-500">RUT: {d.driver_rut}</span>
-                      )}
-                      {d.driver_phone && (
-                        <span className="text-xs text-gray-500">{d.driver_phone}</span>
-                      )}
-                      {d.license_type && (
-                        <span className="text-xs text-gray-500">Lic. {d.license_type}</span>
-                      )}
-                      {d.license_expiry && (
-                        <span className="text-xs text-gray-500">
-                          Vence: {formatDate(d.license_expiry)}
-                        </span>
-                      )}
-                    </div>
-                  </div>
+                <div className="w-10 h-10 rounded-full bg-construserv-orange flex items-center justify-center text-white font-bold text-sm flex-shrink-0">
+                  {d.driver_name.charAt(0).toUpperCase()}
                 </div>
-                <div className="text-right flex-shrink-0 ml-4">
-                  {isActive && veh ? (
-                    <span className="text-xs bg-green-100 text-green-700 font-semibold px-2 py-0.5 rounded-full">
-                      {veh.brand} {veh.model} — {veh.plate}
-                    </span>
-                  ) : (
-                    <span className="text-xs bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full">
-                      Sin vehículo activo
-                    </span>
-                  )}
-                  <p className="text-xs text-gray-400 mt-1">Desde {formatDate(d.start_date)}</p>
+                <div className="flex-1 min-w-0">
+                  <p className="font-semibold text-gray-900 group-hover:text-construserv-orange transition">
+                    {d.driver_name}
+                  </p>
+                  <div className="flex flex-wrap gap-x-3 gap-y-0.5 mt-0.5">
+                    {d.driver_rut && (
+                      <span className="text-xs text-gray-500">RUT: {d.driver_rut}</span>
+                    )}
+                    {d.driver_phone && (
+                      <span className="text-xs text-gray-500">{d.driver_phone}</span>
+                    )}
+                    {d.license_type && (
+                      <span className="text-xs text-gray-500">Lic. {d.license_type}</span>
+                    )}
+                    {d.license_expiry && (
+                      <span className="text-xs text-gray-500">Vence: {formatDate(d.license_expiry)}</span>
+                    )}
+                  </div>
+                  <div className="mt-2">
+                    {isActive && veh ? (
+                      <span className="inline-block text-xs bg-green-100 text-green-700 font-semibold px-2 py-0.5 rounded-full truncate max-w-full">
+                        {veh.brand} {veh.model} — {veh.plate}
+                      </span>
+                    ) : (
+                      <span className="inline-block text-xs bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full">
+                        Sin vehículo activo
+                      </span>
+                    )}
+                  </div>
                 </div>
               </Link>
             );
