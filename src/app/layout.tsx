@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
 
@@ -8,7 +8,13 @@ export const metadata: Metadata = {
   title: "ConstruservAPP — Gestión de Flota",
   description: "Sistema de gestión de flota y mantenciones para Construserv Ltda.",
   manifest: "/manifest.json",
+};
+
+export const viewport: Viewport = {
   themeColor: "#E8500A",
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
 };
 
 export default function RootLayout({
