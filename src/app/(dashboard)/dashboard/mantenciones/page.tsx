@@ -60,45 +60,67 @@ export default async function MaintenancesPage() {
             </Link>
           </div>
         ) : (
-          <table className="w-full text-sm">
-            <thead className="bg-gray-50 border-b border-gray-100">
-              <tr>
-                <th className="text-left px-5 py-3 text-gray-500 font-medium">Vehículo</th>
-                <th className="text-left px-5 py-3 text-gray-500 font-medium">Tipo</th>
-                <th className="text-left px-5 py-3 text-gray-500 font-medium">Taller</th>
-                <th className="text-left px-5 py-3 text-gray-500 font-medium">Kilometraje</th>
-                <th className="text-left px-5 py-3 text-gray-500 font-medium">Fecha</th>
-                <th className="text-right px-5 py-3 text-gray-500 font-medium">Costo</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-50">
-              {maintenances.map((m) => (
-                <tr key={m.id} className="hover:bg-gray-50 transition cursor-pointer">
-                  <td className="px-5 py-3">
-                    <Link href={`/dashboard/mantenciones/${m.id}`} className="block">
-                      <span className="font-medium text-gray-800">
-                        {(m.vehicle as { brand: string; model: string; plate: string })?.brand}{" "}
-                        {(m.vehicle as { brand: string; model: string; plate: string })?.model}
-                      </span>
-                      <br />
-                      <span className="text-gray-400 text-xs">{(m.vehicle as { brand: string; model: string; plate: string })?.plate}</span>
-                    </Link>
-                  </td>
-                  <td className="px-5 py-3">
-                    <span className={`px-2 py-1 rounded-full text-xs font-semibold ${typeColors[m.type] ?? "bg-gray-100 text-gray-700"}`}>
-                      {typeLabels[m.type] ?? m.type}
-                    </span>
-                  </td>
-                  <td className="px-5 py-3 text-gray-700">{m.workshop_name}</td>
-                  <td className="px-5 py-3 text-gray-700">{formatKm(m.km_at_service)}</td>
-                  <td className="px-5 py-3 text-gray-700">{formatDate(m.date)}</td>
-                  <td className="px-5 py-3 text-right font-semibold text-gray-800">
-                    {formatCurrency(m.total_cost)}
-                  </td>
+          <>
+            {/* Vista mobile: cards */}
+            <div className="md:hidden divide-y divide-gray-100">
+              {maintenances.map((m) => {
+                const v = m.vehicle as { brand: string; model: string; plate: string };
+                return (
+                  <Link key={m.id} href={`/dashboard/mantenciones/${m.id}`} className="flex items-center justify-between px-4 py-3 hover:bg-gray-50 transition">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className={`px-2 py-0.5 rounded-full text-xs font-semibold flex-shrink-0 ${typeColors[m.type] ?? "bg-gray-100 text-gray-700"}`}>
+                          {typeLabels[m.type] ?? m.type}
+                        </span>
+                        <span className="text-xs text-gray-400">{formatDate(m.date)}</span>
+                      </div>
+                      <p className="text-sm font-medium text-gray-800 truncate">{v?.brand} {v?.model} <span className="text-gray-400 font-normal">{v?.plate}</span></p>
+                      <p className="text-xs text-gray-400">{m.workshop_name} · {formatKm(m.km_at_service)}</p>
+                    </div>
+                    <p className="text-sm font-semibold text-gray-800 ml-3 flex-shrink-0">{formatCurrency(m.total_cost)}</p>
+                  </Link>
+                );
+              })}
+            </div>
+            {/* Vista desktop: tabla */}
+            <table className="hidden md:table w-full text-sm">
+              <thead className="bg-gray-50 border-b border-gray-100">
+                <tr>
+                  <th className="text-left px-5 py-3 text-gray-500 font-medium">Vehículo</th>
+                  <th className="text-left px-5 py-3 text-gray-500 font-medium">Tipo</th>
+                  <th className="text-left px-5 py-3 text-gray-500 font-medium">Taller</th>
+                  <th className="text-left px-5 py-3 text-gray-500 font-medium">Kilometraje</th>
+                  <th className="text-left px-5 py-3 text-gray-500 font-medium">Fecha</th>
+                  <th className="text-right px-5 py-3 text-gray-500 font-medium">Costo</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody className="divide-y divide-gray-50">
+                {maintenances.map((m) => (
+                  <tr key={m.id} className="hover:bg-gray-50 transition cursor-pointer">
+                    <td className="px-5 py-3">
+                      <Link href={`/dashboard/mantenciones/${m.id}`} className="block">
+                        <span className="font-medium text-gray-800">
+                          {(m.vehicle as { brand: string; model: string; plate: string })?.brand}{" "}
+                          {(m.vehicle as { brand: string; model: string; plate: string })?.model}
+                        </span>
+                        <br />
+                        <span className="text-gray-400 text-xs">{(m.vehicle as { brand: string; model: string; plate: string })?.plate}</span>
+                      </Link>
+                    </td>
+                    <td className="px-5 py-3">
+                      <span className={`px-2 py-1 rounded-full text-xs font-semibold ${typeColors[m.type] ?? "bg-gray-100 text-gray-700"}`}>
+                        {typeLabels[m.type] ?? m.type}
+                      </span>
+                    </td>
+                    <td className="px-5 py-3 text-gray-700">{m.workshop_name}</td>
+                    <td className="px-5 py-3 text-gray-700">{formatKm(m.km_at_service)}</td>
+                    <td className="px-5 py-3 text-gray-700">{formatDate(m.date)}</td>
+                    <td className="px-5 py-3 text-right font-semibold text-gray-800">{formatCurrency(m.total_cost)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </>
         )}
       </div>
     </div>

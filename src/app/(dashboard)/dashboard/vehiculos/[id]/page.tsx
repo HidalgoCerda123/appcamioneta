@@ -84,21 +84,21 @@ export default async function VehicleDetailPage({
       </div>
 
       {/* Ficha del vehículo */}
-      <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-6">
-        <div className="flex items-start gap-6">
+      <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4 md:p-6">
+        <div className="flex flex-col sm:flex-row items-start gap-4 md:gap-6">
           {vehicle.photo_url ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img
               src={vehicle.photo_url}
               alt={`${vehicle.brand} ${vehicle.model}`}
-              className="w-32 h-32 rounded-xl object-cover flex-shrink-0"
+              className="w-full sm:w-32 h-40 sm:h-32 rounded-xl object-cover flex-shrink-0"
             />
           ) : (
-            <div className="w-32 h-32 rounded-xl bg-gray-100 flex items-center justify-center flex-shrink-0">
+            <div className="w-full sm:w-32 h-32 rounded-xl bg-gray-100 flex items-center justify-center flex-shrink-0">
               <Truck className="w-12 h-12 text-gray-300" />
             </div>
           )}
-          <div className="flex-1 grid grid-cols-2 md:grid-cols-3 gap-4">
+          <div className="flex-1 grid grid-cols-2 md:grid-cols-3 gap-3 w-full">
             <div>
               <p className="text-xs text-gray-400 uppercase tracking-wide">Patente</p>
               <p className="font-semibold text-gray-800 mt-0.5">{vehicle.plate}</p>
@@ -127,9 +127,9 @@ export default async function VehicleDetailPage({
               </div>
             )}
             {vehicle.vin && (
-              <div>
+              <div className="col-span-2 md:col-span-1">
                 <p className="text-xs text-gray-400 uppercase tracking-wide">VIN / Chasis</p>
-                <p className="font-semibold text-gray-800 mt-0.5 text-sm font-mono">{vehicle.vin}</p>
+                <p className="font-semibold text-gray-800 mt-0.5 text-xs font-mono break-all">{vehicle.vin}</p>
               </div>
             )}
             <div>

@@ -43,42 +43,26 @@ export default async function DocumentsPage() {
             <p className="text-gray-500">No hay documentos registrados.</p>
           </div>
         ) : (
-          <table className="w-full text-sm">
-            <thead className="bg-gray-50 border-b border-gray-100">
-              <tr>
-                <th className="text-left px-5 py-3 text-gray-500 font-medium">Vehículo</th>
-                <th className="text-left px-5 py-3 text-gray-500 font-medium">Documento</th>
-                <th className="text-left px-5 py-3 text-gray-500 font-medium">Tipo</th>
-                <th className="text-left px-5 py-3 text-gray-500 font-medium">Vencimiento</th>
-                <th className="text-left px-5 py-3 text-gray-500 font-medium">Estado</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-50">
+          <>
+            {/* Vista mobile: cards */}
+            <div className="md:hidden divide-y divide-gray-100">
               {documents.map((doc) => {
                 const days = getDaysUntil(doc.expiry_date);
                 const color = getAlertColor(days);
                 const vehicle = doc.vehicle as { brand: string; model: string; plate: string };
                 return (
-                  <tr key={doc.id} className="hover:bg-gray-50 transition">
-                    <td className="px-5 py-3">
-                      <Link href={`/dashboard/documentos/${doc.id}`} className="block">
-                        <span className="font-medium text-gray-800">{vehicle?.brand} {vehicle?.model}</span>
-                        <br />
-                        <span className="text-gray-400 text-xs">{vehicle?.plate}</span>
-                      </Link>
-                    </td>
-                    <td className="px-5 py-3">
-                      <Link href={`/dashboard/documentos/${doc.id}`} className="block font-medium text-gray-700">{doc.label}</Link>
-                    </td>
-                    <td className="px-5 py-3">
-                      <span className="px-2 py-1 rounded-full text-xs font-medium bg-blue-50 text-blue-700">
-                        {typeLabels[doc.type]}
-                      </span>
-                    </td>
-                    <td className="px-5 py-3 text-gray-700">{formatDate(doc.expiry_date)}</td>
-                    <td className="px-5 py-3">
+                  <Link key={doc.id} href={`/dashboard/documentos/${doc.id}`} className="flex items-center justify-between px-4 py-3 hover:bg-gray-50 transition">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-gray-800 truncate">{vehicle?.brand} {vehicle?.model} <span className="text-gray-400 font-normal">{vehicle?.plate}</span></p>
+                      <div className="flex items-center gap-2 mt-0.5">
+                        <span className="text-xs font-medium text-gray-700">{doc.label}</span>
+                        <span className="px-1.5 py-0.5 rounded-full text-xs bg-blue-50 text-blue-700">{typeLabels[doc.type]}</span>
+                      </div>
+                      <p className="text-xs text-gray-400 mt-0.5">Vence {formatDate(doc.expiry_date)}</p>
+                    </div>
+                    <div className="ml-3 flex-shrink-0">
                       {days < 0 ? (
-                        <span className="flex items-center gap-1 text-xs font-semibold text-red-700">
+                        <span className="flex items-center gap-1 text-xs font-semibold text-red-700 bg-red-100 px-2 py-1 rounded-full">
                           <AlertTriangle className="w-3 h-3" /> Vencido
                         </span>
                       ) : (
@@ -87,15 +71,69 @@ export default async function DocumentsPage() {
                           color === "yellow" ? "bg-yellow-100 text-yellow-700" :
                           "bg-green-100 text-green-700"
                         }`}>
-                          {days === 0 ? "Vence hoy" : `${days} días`}
+                          {days === 0 ? "Hoy" : `${days}d`}
                         </span>
                       )}
-                    </td>
-                  </tr>
+                    </div>
+                  </Link>
                 );
               })}
-            </tbody>
-          </table>
+            </div>
+            {/* Vista desktop: tabla */}
+            <table className="hidden md:table w-full text-sm">
+              <thead className="bg-gray-50 border-b border-gray-100">
+                <tr>
+                  <th className="text-left px-5 py-3 text-gray-500 font-medium">Vehículo</th>
+                  <th className="text-left px-5 py-3 text-gray-500 font-medium">Documento</th>
+                  <th className="text-left px-5 py-3 text-gray-500 font-medium">Tipo</th>
+                  <th className="text-left px-5 py-3 text-gray-500 font-medium">Vencimiento</th>
+                  <th className="text-left px-5 py-3 text-gray-500 font-medium">Estado</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-50">
+                {documents.map((doc) => {
+                  const days = getDaysUntil(doc.expiry_date);
+                  const color = getAlertColor(days);
+                  const vehicle = doc.vehicle as { brand: string; model: string; plate: string };
+                  return (
+                    <tr key={doc.id} className="hover:bg-gray-50 transition">
+                      <td className="px-5 py-3">
+                        <Link href={`/dashboard/documentos/${doc.id}`} className="block">
+                          <span className="font-medium text-gray-800">{vehicle?.brand} {vehicle?.model}</span>
+                          <br />
+                          <span className="text-gray-400 text-xs">{vehicle?.plate}</span>
+                        </Link>
+                      </td>
+                      <td className="px-5 py-3">
+                        <Link href={`/dashboard/documentos/${doc.id}`} className="block font-medium text-gray-700">{doc.label}</Link>
+                      </td>
+                      <td className="px-5 py-3">
+                        <span className="px-2 py-1 rounded-full text-xs font-medium bg-blue-50 text-blue-700">
+                          {typeLabels[doc.type]}
+                        </span>
+                      </td>
+                      <td className="px-5 py-3 text-gray-700">{formatDate(doc.expiry_date)}</td>
+                      <td className="px-5 py-3">
+                        {days < 0 ? (
+                          <span className="flex items-center gap-1 text-xs font-semibold text-red-700">
+                            <AlertTriangle className="w-3 h-3" /> Vencido
+                          </span>
+                        ) : (
+                          <span className={`text-xs font-semibold px-2 py-1 rounded-full ${
+                            color === "red" ? "bg-red-100 text-red-700" :
+                            color === "yellow" ? "bg-yellow-100 text-yellow-700" :
+                            "bg-green-100 text-green-700"
+                          }`}>
+                            {days === 0 ? "Vence hoy" : `${days} días`}
+                          </span>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </>
         )}
       </div>
     </div>
