@@ -5,6 +5,8 @@ import ReportExport from "@/components/reports/ReportExport";
 import { TrendingUp, DollarSign, Wrench, FileWarning, ChevronLeft, ChevronRight } from "lucide-react";
 import Link from "next/link";
 
+export const metadata = { title: 'Reportes' };
+
 export default async function ReportsPage({
   searchParams,
 }: {

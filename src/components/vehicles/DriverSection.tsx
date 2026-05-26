@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { UserCheck, Plus, X, Phone, CreditCard, FileText, Calendar, FolderOpen } from "lucide-react";
+import { UserCheck, Plus, X, Phone, CreditCard, FileText, Calendar, FolderOpen, AlertTriangle } from "lucide-react";
 import { formatDate, validateRut, formatRut } from "@/lib/utils";
 import DriverDocumentsForm from "./DriverDocumentsForm";
 
@@ -26,10 +26,11 @@ interface Driver {
 
 interface Props {
   vehicleId: string;
+  vehicleStatus: string;
   drivers: Driver[];
 }
 
-export default function DriverSection({ vehicleId, drivers: initialDrivers }: Props) {
+export default function DriverSection({ vehicleId, vehicleStatus, drivers: initialDrivers }: Props) {
   const supabase = createClient();
   const [drivers, setDrivers] = useState<Driver[]>(initialDrivers);
   const [showForm, setShowForm] = useState(false);
@@ -68,6 +69,13 @@ export default function DriverSection({ vehicleId, drivers: initialDrivers }: Pr
     // Validar RUT si se ingresó
     if (form.driver_rut && !validateRut(form.driver_rut)) {
       setError("El RUT ingresado no es válido. Verifica el formato (ej: 12.345.678-9).");
+      setLoading(false);
+      return;
+    }
+
+    // Validar solapamiento de fechas
+    if (currentDriver && form.start_date <= currentDriver.start_date) {
+      setError(`La fecha de inicio debe ser posterior a la del conductor actual (${formatDate(currentDriver.start_date)}).`);
       setLoading(false);
       return;
     }
@@ -141,13 +149,20 @@ export default function DriverSection({ vehicleId, drivers: initialDrivers }: Pr
           <UserCheck className="w-4 h-4 text-green-500" />
           Conductor / Responsable
         </h3>
-        <button
-          onClick={() => setShowForm(!showForm)}
-          className="flex items-center gap-1.5 text-construserv-orange hover:text-orange-700 text-sm font-medium transition"
-        >
-          <Plus className="w-4 h-4" />
-          {currentDriver ? "Cambiar conductor" : "Asignar conductor"}
-        </button>
+        {vehicleStatus !== "activo" ? (
+          <span className="flex items-center gap-1.5 text-xs text-yellow-600 bg-yellow-50 border border-yellow-200 px-2.5 py-1.5 rounded-lg">
+            <AlertTriangle className="w-3.5 h-3.5" />
+            Vehículo no activo
+          </span>
+        ) : (
+          <button
+            onClick={() => setShowForm(!showForm)}
+            className="flex items-center gap-1.5 text-construserv-orange hover:text-orange-700 text-sm font-medium transition"
+          >
+            <Plus className="w-4 h-4" />
+            {currentDriver ? "Cambiar conductor" : "Asignar conductor"}
+          </button>
+        )}
       </div>
 
       {/* Conductor actual */}

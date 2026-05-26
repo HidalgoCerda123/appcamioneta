@@ -9,6 +9,8 @@ const PAGE_SIZE = 20;
 type SortField = "expiry_date" | "type" | "label";
 type SortDir = "asc" | "desc";
 
+export const metadata = { title: 'Documentos' };
+
 export default async function DocumentsPage({
   searchParams,
 }: {
@@ -19,34 +21,49 @@ export default async function DocumentsPage({
 
   const sortField: SortField = (["expiry_date", "type", "label"].includes(sort ?? "") ? sort : "expiry_date") as SortField;
   const sortDir: SortDir = dir === "desc" ? "desc" : "asc";
+  const page = Math.max(1, parseInt(pageParam ?? "1") || 1);
 
-  const { data: allDocuments } = await supabase
+  const today = new Date().toISOString().split("T")[0];
+  const in30 = new Date(Date.now() + 30 * 86400000).toISOString().split("T")[0];
+
+  // Buscar vehículos que coincidan con el texto de búsqueda
+  let vehicleIdsFromSearch: string[] = [];
+  if (q) {
+    const { data: matchingVehicles } = await supabase
+      .from("vehicles")
+      .select("id")
+      .or(`brand.ilike.%${q}%,model.ilike.%${q}%,plate.ilike.%${q}%`);
+    vehicleIdsFromSearch = (matchingVehicles ?? []).map((v) => v.id);
+  }
+
+  // Construir query con filtros server-side
+  let query = supabase
     .from("vehicle_documents")
-    .select("*, vehicle:vehicles(plate, brand, model)")
+    .select("*, vehicle:vehicles(plate, brand, model)", { count: "exact" })
     .order(sortField, { ascending: sortDir === "asc" });
 
-  let documents = allDocuments ?? [];
-  if (q) {
-    const lq = q.toLowerCase();
-    documents = documents.filter((d) => {
-      const v = d.vehicle as { brand: string; model: string; plate: string } | null;
-      return (
-        v?.brand?.toLowerCase().includes(lq) ||
-        v?.model?.toLowerCase().includes(lq) ||
-        v?.plate?.toLowerCase().includes(lq) ||
-        d.label?.toLowerCase().includes(lq)
-      );
-    });
-  }
-  if (tipo) documents = documents.filter((d) => d.type === tipo);
-  if (estado === "vencido") documents = documents.filter((d) => getDaysUntil(d.expiry_date) < 0);
-  else if (estado === "proximo") documents = documents.filter((d) => { const days = getDaysUntil(d.expiry_date); return days >= 0 && days <= 30; });
-  else if (estado === "vigente") documents = documents.filter((d) => getDaysUntil(d.expiry_date) > 30);
+  if (tipo) query = query.eq("type", tipo);
 
-  const total = documents.length;
-  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
-  const page = Math.min(Math.max(1, parseInt(pageParam ?? "1") || 1), totalPages);
-  const paginated = documents.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+  if (estado === "vencido") query = query.lt("expiry_date", today);
+  else if (estado === "proximo") query = query.gte("expiry_date", today).lte("expiry_date", in30);
+  else if (estado === "vigente") query = query.gt("expiry_date", in30);
+
+  if (q) {
+    if (vehicleIdsFromSearch.length > 0) {
+      query = query.or(`label.ilike.%${q}%,vehicle_id.in.(${vehicleIdsFromSearch.join(",")})`);
+    } else {
+      query = query.ilike("label", `%${q}%`);
+    }
+  }
+
+  const { count: total } = await query;
+  const totalPages = Math.max(1, Math.ceil((total ?? 0) / PAGE_SIZE));
+  const safePage = Math.min(page, totalPages);
+
+  const { data: documents } = await query.range(
+    (safePage - 1) * PAGE_SIZE,
+    safePage * PAGE_SIZE - 1
+  );
 
   const typeLabels: Record<string, string> = {
     revision_tecnica: "Revisión Técnica",
@@ -91,7 +108,7 @@ export default async function DocumentsPage({
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-2xl font-bold text-gray-900">Documentos</h2>
-          <p className="text-gray-500 text-sm mt-1">{total} documentos registrados</p>
+          <p className="text-gray-500 text-sm mt-1">{total ?? 0} documentos registrados</p>
         </div>
         <Link
           href="/dashboard/documentos/nuevo"
@@ -132,7 +149,7 @@ export default async function DocumentsPage({
       </form>
 
       <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
-        {documents.length === 0 ? (
+        {!documents || documents.length === 0 ? (
           <div className="text-center py-16">
             <FileText className="w-12 h-12 text-gray-300 mx-auto mb-3" />
             <p className="text-gray-500">No hay documentos registrados.</p>
@@ -141,7 +158,7 @@ export default async function DocumentsPage({
           <>
             {/* Vista mobile: cards */}
             <div className="md:hidden divide-y divide-gray-100">
-              {paginated.map((doc) => {
+              {documents.map((doc) => {
                 const days = getDaysUntil(doc.expiry_date);
                 const color = getAlertColor(days);
                 const vehicle = doc.vehicle as { brand: string; model: string; plate: string };
@@ -198,7 +215,7 @@ export default async function DocumentsPage({
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-50">
-                {paginated.map((doc) => {
+                {documents.map((doc) => {
                   const days = getDaysUntil(doc.expiry_date);
                   const color = getAlertColor(days);
                   const vehicle = doc.vehicle as { brand: string; model: string; plate: string };
@@ -240,7 +257,7 @@ export default async function DocumentsPage({
                 })}
               </tbody>
             </table>
-            <Pagination page={page} totalPages={totalPages} buildHref={buildPageHref} />
+            <Pagination page={safePage} totalPages={totalPages} buildHref={buildPageHref} />
           </>
         )}
       </div>

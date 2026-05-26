@@ -12,6 +12,7 @@ import {
   AlertTriangle,
 } from "lucide-react";
 import { formatDate, getDaysUntil, getAlertColor } from "@/lib/utils";
+import LinkDriverProfile from "@/components/drivers/LinkDriverProfile";
 
 const LICENSE_TYPE_LABELS: Record<string, string> = {
   A1: "A1 — Motocicletas hasta 50cc",
@@ -75,11 +76,23 @@ export default async function DriverDetailPage({
   if (!driver) notFound();
 
   // Todos los registros del mismo conductor (misma persona) para historial completo
-  const { data: history } = await supabase
-    .from("vehicle_drivers")
-    .select("*, vehicle:vehicles(id, plate, brand, model)")
-    .eq("driver_name", driver.driver_name)
-    .order("start_date", { ascending: false });
+  const [{ data: history }, { data: allProfiles }] = await Promise.all([
+    supabase
+      .from("vehicle_drivers")
+      .select("*, vehicle:vehicles(id, plate, brand, model)")
+      .eq("driver_name", driver.driver_name)
+      .order("start_date", { ascending: false }),
+    supabase.from("profiles").select("id, full_name, email").order("full_name"),
+  ]);
+
+  // IDs de todos los registros de este conductor (para actualizar en bloque)
+  const driverRecordIds = (history ?? []).map((h) => h.id);
+
+  // Perfil vinculado (tomamos el del primer registro que tenga profile_id)
+  const linkedProfileId = (history ?? []).find((h) => h.profile_id)?.profile_id ?? null;
+  const linkedProfile = linkedProfileId
+    ? (allProfiles ?? []).find((p) => p.id === linkedProfileId) ?? null
+    : null;
 
   const licenseExpiry = driver.license_expiry ? getDaysUntil(driver.license_expiry) : null;
   const licenseColor = licenseExpiry !== null ? getAlertColor(licenseExpiry) : null;
@@ -219,6 +232,14 @@ export default async function DriverDetailPage({
           })()}
         </div>
       )}
+
+      {/* Vinculación con cuenta de usuario */}
+      <LinkDriverProfile
+        driverRecordIds={driverRecordIds}
+        driverName={driver.driver_name}
+        linkedProfile={linkedProfile}
+        allProfiles={allProfiles ?? []}
+      />
 
       {/* Documentos */}
       <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5">

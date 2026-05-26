@@ -1,3 +1,5 @@
+export const metadata = { title: 'Usuarios' };
+
 export const dynamic = "force-dynamic";
 
 import { createClient } from "@/lib/supabase/server";
@@ -11,14 +13,32 @@ export default async function UsersPage() {
   const supabase = await createClient();
 
   const { data: { user } } = await supabase.auth.getUser();
-  const { data: currentProfile } = await supabase.from("profiles").select("role").eq("id", user!.id).single();
+  if (!user) redirect("/login");
+  const { data: currentProfile } = await supabase.from("profiles").select("role").eq("id", user.id).single();
   if (currentProfile?.role !== "admin") redirect("/dashboard");
 
-  const [{ data: profiles }, { data: customRoles }, { data: notifPrefs }] = await Promise.all([
+  const [{ data: profiles }, { data: customRoles }, { data: notifPrefs }, { data: activeDrivers }] = await Promise.all([
     supabase.from("profiles").select("*").order("created_at"),
     supabase.from("custom_roles").select("id, name, base_role").order("name"),
     supabase.from("user_notification_prefs").select("*"),
+    supabase
+      .from("vehicle_drivers")
+      .select("id, profile_id, driver_name, vehicle:vehicles(id, plate)")
+      .not("profile_id", "is", null)
+      .is("end_date", null),
   ]);
+
+  // Formatear conductores vinculados activos
+  const linkedDrivers = (activeDrivers ?? []).map((d) => {
+    const veh = d.vehicle as unknown as { id: string; plate: string } | null;
+    return {
+      profile_id: d.profile_id as string,
+      driver_id: d.id,
+      driver_name: d.driver_name,
+      vehicle_id: veh?.id ?? null,
+      vehicle_plate: veh?.plate ?? null,
+    };
+  });
 
   return (
     <div className="space-y-6">
@@ -48,9 +68,10 @@ export default async function UsersPage() {
         </div>
         <UsersTable
           profiles={profiles ?? []}
-          currentUserId={user!.id}
+          currentUserId={user.id}
           customRoles={customRoles ?? []}
           notifPrefs={notifPrefs ?? []}
+          linkedDrivers={linkedDrivers}
         />
       </div>
     </div>

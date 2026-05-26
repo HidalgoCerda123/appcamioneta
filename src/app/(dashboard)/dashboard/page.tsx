@@ -4,6 +4,8 @@ import { formatCurrency, formatDate, getDaysUntil, getAlertColor } from "@/lib/u
 import Link from "next/link";
 import type { VehicleDocument } from "@/types";
 
+export const metadata = { title: 'Dashboard' };
+
 export default async function DashboardPage() {
   const supabase = await createClient();
 
@@ -199,7 +201,7 @@ export default async function DashboardPage() {
             </div>
             <div className="divide-y divide-gray-50">
               {nextServices.map((m) => {
-                const v = m.vehicle as { plate: string; brand: string; model: string } | null;
+                const v = m.vehicle as unknown as { plate: string; brand: string; model: string } | null;
                 const days = m.next_service_date ? getDaysUntil(m.next_service_date) : null;
                 return (
                   <div key={m.vehicle_id + m.next_service_date} className="px-5 py-3 flex items-center justify-between">

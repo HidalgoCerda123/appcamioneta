@@ -2,9 +2,10 @@
 
 import React, { useState, useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { Bell, BellOff } from "lucide-react";
+import { Bell, BellOff, Truck } from "lucide-react";
 import { formatDate } from "@/lib/utils";
 import UserNotifPrefs from "@/components/admin/UserNotifPrefs";
+import Link from "next/link";
 
 interface Profile {
   id: string;
@@ -31,11 +32,20 @@ interface NotifPref {
   notify_own_vehicle_only: boolean;
 }
 
+interface LinkedDriver {
+  profile_id: string;
+  driver_name: string;
+  driver_id: string;
+  vehicle_plate: string | null;
+  vehicle_id: string | null;
+}
+
 interface Props {
   profiles: Profile[];
   currentUserId: string;
   customRoles: CustomRole[];
   notifPrefs: NotifPref[];
+  linkedDrivers: LinkedDriver[];
 }
 
 // Roles predefinidos del sistema (siempre disponibles)
@@ -46,7 +56,7 @@ const SYSTEM_ROLES = [
   { id: "__viewer",  value: "viewer",  label: "Solo Lectura",   color: "bg-gray-100 text-gray-600" },
 ];
 
-export default function UsersTable({ profiles, currentUserId, customRoles: initialCustomRoles, notifPrefs: initialNotifPrefs }: Props) {
+export default function UsersTable({ profiles, currentUserId, customRoles: initialCustomRoles, notifPrefs: initialNotifPrefs, linkedDrivers }: Props) {
   const supabase = createClient();
   const [customRoles, setCustomRoles] = useState<CustomRole[]>(initialCustomRoles);
   const [notifPrefs, setNotifPrefs] = useState<NotifPref[]>(initialNotifPrefs);
@@ -105,6 +115,7 @@ export default function UsersTable({ profiles, currentUserId, customRoles: initi
               <th className="text-left px-5 py-3 text-gray-500 font-medium">Usuario</th>
               <th className="text-left px-5 py-3 text-gray-500 font-medium">Email</th>
               <th className="text-left px-5 py-3 text-gray-500 font-medium">Rol</th>
+              <th className="text-left px-5 py-3 text-gray-500 font-medium">Conductor</th>
               <th className="text-left px-5 py-3 text-gray-500 font-medium">Notificaciones</th>
               <th className="text-left px-5 py-3 text-gray-500 font-medium">Registrado</th>
             </tr>
@@ -116,6 +127,7 @@ export default function UsersTable({ profiles, currentUserId, customRoles: initi
               const isCurrentUser = p.id === currentUserId;
               const currentValue = roleMap[p.id] ?? `system:${p.role}`;
               const { label, color } = getRoleLabel(currentValue);
+              const linkedDriver = linkedDrivers.find((d) => d.profile_id === p.id);
 
               return (
                 <React.Fragment key={p.id}>
@@ -161,6 +173,24 @@ export default function UsersTable({ profiles, currentUserId, customRoles: initi
                       )}
                     </td>
 
+                    {/* Conductor vinculado */}
+                    <td className="px-5 py-3">
+                      {linkedDriver ? (
+                        <Link
+                          href={`/dashboard/conductores/${linkedDriver.driver_id}`}
+                          className="flex items-center gap-1.5 text-xs font-medium text-green-700 bg-green-50 border border-green-200 px-2.5 py-1.5 rounded-lg hover:bg-green-100 transition w-fit"
+                        >
+                          <Truck className="w-3 h-3 flex-shrink-0" />
+                          <span>{linkedDriver.driver_name}</span>
+                          {linkedDriver.vehicle_plate && (
+                            <span className="text-green-500">· {linkedDriver.vehicle_plate}</span>
+                          )}
+                        </Link>
+                      ) : (
+                        <span className="text-xs text-gray-400">Sin conductor</span>
+                      )}
+                    </td>
+
                     {/* Notificaciones */}
                     <td className="px-5 py-3">
                       <button
@@ -182,7 +212,7 @@ export default function UsersTable({ profiles, currentUserId, customRoles: initi
                   {/* Panel notificaciones inline */}
                   {openNotifFor === p.id && (
                     <tr>
-                      <td colSpan={5} className="px-5 py-3 bg-gray-50">
+                      <td colSpan={6} className="px-5 py-3 bg-gray-50">
                         <UserNotifPrefs
                           userId={p.id}
                           userName={p.full_name}

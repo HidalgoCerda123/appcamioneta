@@ -4,6 +4,8 @@ import { ShieldCheck } from "lucide-react";
 import RoleManager from "@/components/admin/RoleManager";
 import type { CustomRole } from "@/components/admin/RoleManager";
 
+export const metadata = { title: 'Configuración' };
+
 export default async function ConfiguracionPage() {
   const supabase = await createClient();
 

@@ -183,7 +183,7 @@ export default async function VehicleDetailPage({
       </div>
 
       {/* Conductor */}
-      <DriverSection vehicleId={id} drivers={drivers ?? []} />
+      <DriverSection vehicleId={id} vehicleStatus={vehicle.status} drivers={drivers ?? []} />
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Documentos */}

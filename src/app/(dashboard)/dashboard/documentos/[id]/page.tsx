@@ -40,7 +40,7 @@ export default async function DocumentDetailPage({
     const parts = rawUrl.split("/documents/");
     if (parts.length > 1) {
       const filePath = parts[1].split("?")[0];
-      const { data: signed } = await supabase.storage.from("documents").createSignedUrl(filePath, 3600);
+      const { data: signed } = await supabase.storage.from("documents").createSignedUrl(filePath, 900);
       signedUrls.push({ url: rawUrl, signed: signed?.signedUrl ?? rawUrl });
     } else {
       signedUrls.push({ url: rawUrl, signed: rawUrl });

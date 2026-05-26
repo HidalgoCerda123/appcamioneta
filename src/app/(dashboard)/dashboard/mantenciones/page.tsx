@@ -9,6 +9,8 @@ const PAGE_SIZE = 20;
 type SortField = "date" | "total_cost" | "km_at_service" | "type";
 type SortDir = "asc" | "desc";
 
+export const metadata = { title: 'Mantenciones' };
+
 export default async function MaintenancesPage({
   searchParams,
 }: {
@@ -19,37 +21,49 @@ export default async function MaintenancesPage({
 
   const sortField: SortField = (["date", "total_cost", "km_at_service", "type"].includes(sort ?? "") ? sort : "date") as SortField;
   const sortDir: SortDir = dir === "asc" ? "asc" : "desc";
-
-  const { data: allMaintenances } = await supabase
-    .from("maintenances")
-    .select("*, vehicle:vehicles(id, plate, brand, model, type)")
-    .order(sortField, { ascending: sortDir === "asc" });
+  const page = Math.max(1, parseInt(pageParam ?? "1") || 1);
 
   const { data: vehicles } = await supabase
     .from("vehicles")
     .select("id, plate, brand, model")
     .order("brand");
 
-  let maintenances = allMaintenances ?? [];
+  // Buscar vehículos que coincidan con el texto de búsqueda
+  let vehicleIdsFromSearch: string[] = [];
   if (q) {
-    const lq = q.toLowerCase();
-    maintenances = maintenances.filter((m) => {
-      const v = m.vehicle as { brand: string; model: string; plate: string } | null;
-      return (
-        v?.brand?.toLowerCase().includes(lq) ||
-        v?.model?.toLowerCase().includes(lq) ||
-        v?.plate?.toLowerCase().includes(lq) ||
-        m.workshop_name?.toLowerCase().includes(lq)
-      );
-    });
+    const { data: matchingVehicles } = await supabase
+      .from("vehicles")
+      .select("id")
+      .or(`brand.ilike.%${q}%,model.ilike.%${q}%,plate.ilike.%${q}%`);
+    vehicleIdsFromSearch = (matchingVehicles ?? []).map((v) => v.id);
   }
-  if (tipo) maintenances = maintenances.filter((m) => m.type === tipo);
-  if (vehiculo) maintenances = maintenances.filter((m) => (m.vehicle as { id: string } | null)?.id === vehiculo);
 
-  const total = maintenances.length;
-  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
-  const page = Math.min(Math.max(1, parseInt(pageParam ?? "1") || 1), totalPages);
-  const paginated = maintenances.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+  // Construir query con filtros server-side
+  let query = supabase
+    .from("maintenances")
+    .select("*, vehicle:vehicles(id, plate, brand, model, type)", { count: "exact" })
+    .order(sortField, { ascending: sortDir === "asc" });
+
+  if (tipo) query = query.eq("type", tipo);
+  if (vehiculo) query = query.eq("vehicle_id", vehiculo);
+  if (q) {
+    if (vehicleIdsFromSearch.length > 0) {
+      query = query.or(`workshop_name.ilike.%${q}%,vehicle_id.in.(${vehicleIdsFromSearch.join(",")})`);
+    } else {
+      query = query.ilike("workshop_name", `%${q}%`);
+    }
+  }
+
+  // Obtener total primero para calcular páginas
+  const { count: total } = await query;
+  const totalPages = Math.max(1, Math.ceil((total ?? 0) / PAGE_SIZE));
+  const safePage = Math.min(page, totalPages);
+
+  // Obtener solo la página actual
+  const { data: maintenances } = await query.range(
+    (safePage - 1) * PAGE_SIZE,
+    safePage * PAGE_SIZE - 1
+  );
 
   const typeLabels: Record<string, string> = {
     aceite: "Aceite",
@@ -107,7 +121,7 @@ export default async function MaintenancesPage({
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-2xl font-bold text-gray-900">Mantenciones</h2>
-          <p className="text-gray-500 text-sm mt-1">{total} registros</p>
+          <p className="text-gray-500 text-sm mt-1">{total ?? 0} registros</p>
         </div>
         <Link
           href="/dashboard/mantenciones/nueva"
@@ -175,7 +189,7 @@ export default async function MaintenancesPage({
           <>
             {/* Vista mobile: cards */}
             <div className="md:hidden divide-y divide-gray-100">
-              {paginated.map((m) => {
+              {maintenances.map((m) => {
                 const v = m.vehicle as { brand: string; model: string; plate: string };
                 return (
                   <Link key={m.id} href={`/dashboard/mantenciones/${m.id}`} className="flex items-center justify-between px-4 py-3 hover:bg-gray-50 transition">
@@ -223,7 +237,7 @@ export default async function MaintenancesPage({
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-50">
-                {paginated.map((m) => (
+                {maintenances.map((m) => (
                   <tr key={m.id} className="hover:bg-gray-50 transition cursor-pointer">
                     <td className="px-5 py-3">
                       <Link href={`/dashboard/mantenciones/${m.id}`} className="block">
@@ -248,7 +262,7 @@ export default async function MaintenancesPage({
                 ))}
               </tbody>
             </table>
-            <Pagination page={page} totalPages={totalPages} buildHref={buildPageHref} />
+            <Pagination page={safePage} totalPages={totalPages} buildHref={buildPageHref} />
           </>
         )}
       </div>

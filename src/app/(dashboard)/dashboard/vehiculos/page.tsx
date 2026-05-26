@@ -4,6 +4,8 @@ import Link from "next/link";
 import VehicleCard from "@/components/vehicles/VehicleCard";
 import type { Vehicle } from "@/types";
 
+export const metadata = { title: 'Vehículos' };
+
 export default async function VehiclesPage({
   searchParams,
 }: {

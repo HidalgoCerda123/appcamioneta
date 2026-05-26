@@ -6,7 +6,10 @@ import ThemeProvider from "@/components/ui/ThemeProvider";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "ConstruservAPP — Gestión de Flota",
+  title: {
+    default: "ConstruservAPP",
+    template: "%s | ConstruservAPP",
+  },
   description: "Sistema de gestión de flota y mantenciones para Construserv Ltda.",
   manifest: "/manifest.json",
 };

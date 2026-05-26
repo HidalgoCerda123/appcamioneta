@@ -13,6 +13,7 @@ import {
   Settings,
   LogOut,
   HardHat,
+  ShieldCheck,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/client";
@@ -31,6 +32,7 @@ const navItems = [
 
 const adminItems = [
   { href: "/dashboard/usuarios", label: "Usuarios", icon: Users },
+  { href: "/dashboard/auditoria", label: "Auditoría", icon: ShieldCheck },
   { href: "/dashboard/configuracion", label: "Configuración", icon: Settings },
 ];
 

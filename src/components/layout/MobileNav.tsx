@@ -15,6 +15,7 @@ import {
   Users,
   Settings,
   LogOut,
+  ShieldCheck,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useState } from "react";
@@ -37,6 +38,7 @@ const moreItems = [
 
 const adminItems = [
   { href: "/dashboard/usuarios", label: "Usuarios", icon: Users },
+  { href: "/dashboard/auditoria", label: "Auditoría", icon: ShieldCheck },
   { href: "/dashboard/configuracion", label: "Configuración", icon: Settings },
 ];
 

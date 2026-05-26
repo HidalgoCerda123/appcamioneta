@@ -3,6 +3,8 @@ import { HardHat, Search } from "lucide-react";
 import Link from "next/link";
 import { formatDate } from "@/lib/utils";
 
+export const metadata = { title: 'Conductores' };
+
 export default async function ConductoresPage({
   searchParams,
 }: {

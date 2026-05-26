@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { KeyRound, CheckCircle, User, Mail } from "lucide-react";
+import { KeyRound, CheckCircle, User, Mail, Truck } from "lucide-react";
+import Link from "next/link";
 
 export default function PerfilPage() {
   const supabase = createClient();
@@ -23,22 +24,59 @@ export default function PerfilPage() {
   const [passMsg, setPassMsg] = useState("");
   const [passError, setPassError] = useState("");
 
+  const [linkedAssignment, setLinkedAssignment] = useState<{
+    driver_name: string;
+    driver_id: string;
+    vehicle_brand: string;
+    vehicle_model: string;
+    vehicle_plate: string;
+    vehicle_id: string;
+  } | null>(null);
+
   const inputClass = "w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-construserv-orange";
 
   useEffect(() => {
+    let cancelled = false;
+
     async function load() {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+      if (!user || cancelled) return;
       setUserEmail(user.email ?? "");
       const { data: profile } = await supabase.from("profiles").select("id, full_name").eq("id", user.id).single();
+      if (cancelled) return;
       if (profile) {
         setFullName(profile.full_name ?? "");
         setOriginalName(profile.full_name ?? "");
         setProfileId(profile.id);
       }
+
+      // Comprobar si este usuario está vinculado como conductor activo
+      const { data: assignment } = await supabase
+        .from("vehicle_drivers")
+        .select("id, driver_name, vehicle:vehicles(id, plate, brand, model)")
+        .eq("profile_id", user.id)
+        .is("end_date", null)
+        .maybeSingle();
+
+      if (cancelled) return;
+      if (assignment) {
+        const veh = assignment.vehicle as unknown as { id: string; plate: string; brand: string; model: string } | null;
+        if (veh) {
+          setLinkedAssignment({
+            driver_id: assignment.id,
+            driver_name: assignment.driver_name,
+            vehicle_id: veh.id,
+            vehicle_brand: veh.brand,
+            vehicle_model: veh.model,
+            vehicle_plate: veh.plate,
+          });
+        }
+      }
+
       setLoadingProfile(false);
     }
     load();
+    return () => { cancelled = true; };
   }, []);
 
   async function handleSaveName(e: React.FormEvent) {
@@ -110,6 +148,31 @@ export default function PerfilPage() {
           </p>
         </div>
       </div>
+
+      {/* Vehículo asignado (si usuario es conductor) */}
+      {linkedAssignment && (
+        <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-6">
+          <h3 className="font-semibold text-gray-800 flex items-center gap-2 mb-4">
+            <Truck className="w-4 h-4 text-green-500" />
+            Vehículo Asignado
+          </h3>
+          <Link
+            href={`/dashboard/vehiculos/${linkedAssignment.vehicle_id}`}
+            className="flex items-center gap-3 hover:text-construserv-orange transition"
+          >
+            <div className="w-10 h-10 bg-gray-100 rounded-xl flex items-center justify-center">
+              <Truck className="w-5 h-5 text-gray-400" />
+            </div>
+            <div>
+              <p className="font-semibold text-gray-900">{linkedAssignment.vehicle_brand} {linkedAssignment.vehicle_model}</p>
+              <p className="text-sm text-gray-500">{linkedAssignment.vehicle_plate}</p>
+            </div>
+          </Link>
+          <p className="text-xs text-gray-400 mt-3">
+            Registrado como conductor: <span className="font-medium text-gray-600">{linkedAssignment.driver_name}</span>
+          </p>
+        </div>
+      )}
 
       {/* Editar nombre */}
       <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-6">

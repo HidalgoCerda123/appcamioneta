@@ -24,15 +24,36 @@ interface Row {
   error?: string;
 }
 
+/** Parser CSV que maneja campos entre comillas con comas internas */
+function splitCSVLine(line: string): string[] {
+  const result: string[] = [];
+  let current = "";
+  let inQuotes = false;
+  for (let i = 0; i < line.length; i++) {
+    const ch = line[i];
+    if (ch === '"') {
+      if (inQuotes && line[i + 1] === '"') { current += '"'; i++; }
+      else { inQuotes = !inQuotes; }
+    } else if (ch === "," && !inQuotes) {
+      result.push(current.trim());
+      current = "";
+    } else {
+      current += ch;
+    }
+  }
+  result.push(current.trim());
+  return result;
+}
+
 function parseCSV(text: string): Row[] {
   const lines = text.split(/\r?\n/).filter((l) => l.trim());
   if (lines.length < 2) return [];
 
-  const headers = lines[0].split(",").map((h) => h.trim().toLowerCase().replace(/[^a-z0-9_áéíóú]/g, ""));
+  const headers = splitCSVLine(lines[0]).map((h) => h.toLowerCase().replace(/[^a-z0-9_áéíóú]/g, ""));
   const rows: Row[] = [];
 
   for (let i = 1; i < lines.length; i++) {
-    const cols = lines[i].split(",").map((c) => c.trim().replace(/^"|"$/g, ""));
+    const cols = splitCSVLine(lines[i]);
     const get = (key: string) => cols[headers.indexOf(key)] ?? "";
 
     const plate = get("patente").toUpperCase().replace(/\s/g, "");
@@ -60,6 +81,22 @@ function parseCSV(text: string): Row[] {
   }
 
   return rows;
+}
+
+function downloadFailedRows(rows: Row[]) {
+  const headers = TEMPLATE_HEADERS.join(",");
+  const csvRows = rows.map((r) =>
+    [r.plate, r.brand, r.model, r.year ?? "", r.type, r.color, r.vin, r.current_km, r.status, r.notes]
+      .map((v) => `"${String(v ?? "").replace(/"/g, '""')}"`)
+      .join(",")
+  );
+  const blob = new Blob([headers + "\n" + csvRows.join("\n")], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "filas_con_error.csv";
+  a.click();
+  URL.revokeObjectURL(url);
 }
 
 function downloadTemplate() {
@@ -183,16 +220,28 @@ export default function CsvImportVehicles() {
                 )}
               </p>
             </div>
-            {validRows.length > 0 && (
-              <button
-                onClick={handleImport}
-                disabled={importing}
-                className="flex items-center gap-2 bg-construserv-orange hover:bg-orange-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition disabled:opacity-60"
-              >
-                {importing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
-                {importing ? "Importando..." : `Importar ${validRows.length} vehículos`}
-              </button>
-            )}
+            <div className="flex items-center gap-2">
+              {invalidRows.length > 0 && (
+                <button
+                  onClick={() => downloadFailedRows(invalidRows)}
+                  className="flex items-center gap-2 border border-red-300 text-red-600 px-3 py-2 rounded-lg text-sm font-medium hover:bg-red-50 transition"
+                  title="Descargar filas con error para corregir"
+                >
+                  <Download className="w-4 h-4" />
+                  Descargar errores
+                </button>
+              )}
+              {validRows.length > 0 && (
+                <button
+                  onClick={handleImport}
+                  disabled={importing}
+                  className="flex items-center gap-2 bg-construserv-orange hover:bg-orange-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition disabled:opacity-60"
+                >
+                  {importing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
+                  {importing ? "Importando..." : `Importar ${validRows.length} vehículos`}
+                </button>
+              )}
+            </div>
           </div>
 
           <div className="overflow-x-auto">
