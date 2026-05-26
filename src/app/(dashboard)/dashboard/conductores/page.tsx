@@ -1,5 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
-import { HardHat, Search } from "lucide-react";
+import { HardHat, Search, Plus } from "lucide-react";
 import Link from "next/link";
 import { formatDate } from "@/lib/utils";
 
@@ -46,6 +46,13 @@ export default async function ConductoresPage({
           <h2 className="text-2xl font-bold text-gray-900">Conductores</h2>
           <p className="text-gray-500 text-sm mt-1">{unique.length} conductor(es) registrados</p>
         </div>
+        <Link
+          href="/dashboard/conductores/nuevo"
+          className="flex items-center gap-2 bg-construserv-orange text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-orange-600 transition"
+        >
+          <Plus className="w-4 h-4" />
+          Nuevo conductor
+        </Link>
       </div>
 
       {/* Buscador */}
