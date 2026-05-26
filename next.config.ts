@@ -11,12 +11,6 @@ const nextConfig: NextConfig = {
       },
     ],
   },
-  experimental: {
-    serverComponentsExternalPackages: [],
-  },
-  outputFileTracingIncludes: {
-    "/": ["./middleware.ts"],
-  },
 };
 
 export default nextConfig;
