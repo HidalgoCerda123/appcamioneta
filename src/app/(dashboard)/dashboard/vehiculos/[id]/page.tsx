@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, Truck, Gauge, Wrench, FileText, Pencil } from "lucide-react";
+import DeleteButton from "@/components/ui/DeleteButton";
 import { formatCurrency, formatDate, formatKm, getDaysUntil, getAlertColor } from "@/lib/utils";
 import DriverSection from "@/components/vehicles/DriverSection";
 
@@ -74,13 +75,21 @@ export default async function VehicleDetailPage({
           </h2>
           <p className="text-gray-500 text-sm">{vehicle.plate} — {vehicle.year}</p>
         </div>
-        <Link
-          href={`/dashboard/vehiculos/${id}/editar`}
-          className="flex items-center gap-2 border border-gray-300 text-gray-700 px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-50 transition"
-        >
-          <Pencil className="w-4 h-4" />
-          Editar
-        </Link>
+        <div className="flex items-center gap-2">
+          <Link
+            href={`/dashboard/vehiculos/${id}/editar`}
+            className="flex items-center gap-2 border border-gray-300 text-gray-700 px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-50 transition"
+          >
+            <Pencil className="w-4 h-4" />
+            Editar
+          </Link>
+          <DeleteButton
+            table="vehicles"
+            id={id}
+            redirectTo="/dashboard/vehiculos"
+            confirmText="Se eliminará este vehículo y todos sus datos asociados permanentemente."
+          />
+        </div>
       </div>
 
       {/* Ficha del vehículo */}

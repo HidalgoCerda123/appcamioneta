@@ -1,15 +1,38 @@
 import { createClient } from "@/lib/supabase/server";
-import { Plus, FileText, AlertTriangle } from "lucide-react";
+import { Plus, FileText, AlertTriangle, Search } from "lucide-react";
 import Link from "next/link";
 import { formatDate, getDaysUntil, getAlertColor } from "@/lib/utils";
 
-export default async function DocumentsPage() {
+export default async function DocumentsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ q?: string; tipo?: string; estado?: string }>;
+}) {
+  const { q, tipo, estado } = await searchParams;
   const supabase = await createClient();
 
-  const { data: documents } = await supabase
+  const { data: allDocuments } = await supabase
     .from("vehicle_documents")
     .select("*, vehicle:vehicles(plate, brand, model)")
     .order("expiry_date", { ascending: true });
+
+  let documents = allDocuments ?? [];
+  if (q) {
+    const lq = q.toLowerCase();
+    documents = documents.filter((d) => {
+      const v = d.vehicle as { brand: string; model: string; plate: string } | null;
+      return (
+        v?.brand?.toLowerCase().includes(lq) ||
+        v?.model?.toLowerCase().includes(lq) ||
+        v?.plate?.toLowerCase().includes(lq) ||
+        d.label?.toLowerCase().includes(lq)
+      );
+    });
+  }
+  if (tipo) documents = documents.filter((d) => d.type === tipo);
+  if (estado === "vencido") documents = documents.filter((d) => getDaysUntil(d.expiry_date) < 0);
+  else if (estado === "proximo") documents = documents.filter((d) => { const days = getDaysUntil(d.expiry_date); return days >= 0 && days <= 30; });
+  else if (estado === "vigente") documents = documents.filter((d) => getDaysUntil(d.expiry_date) > 30);
 
   const typeLabels: Record<string, string> = {
     revision_tecnica: "Revisión Técnica",
@@ -36,8 +59,35 @@ export default async function DocumentsPage() {
         </Link>
       </div>
 
+      {/* Filtros */}
+      <form method="GET" className="bg-white rounded-xl border border-gray-100 shadow-sm p-4 flex flex-wrap gap-3">
+        <div className="relative flex-1 min-w-[160px]">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+          <input
+            name="q"
+            defaultValue={q ?? ""}
+            placeholder="Buscar vehículo o documento..."
+            className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-construserv-orange"
+          />
+        </div>
+        <select name="tipo" defaultValue={tipo ?? ""} className="border border-gray-300 rounded-lg text-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-construserv-orange">
+          <option value="">Todos los tipos</option>
+          {Object.entries(typeLabels).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+        </select>
+        <select name="estado" defaultValue={estado ?? ""} className="border border-gray-300 rounded-lg text-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-construserv-orange">
+          <option value="">Todos los estados</option>
+          <option value="vencido">Vencido</option>
+          <option value="proximo">Próximo a vencer (30 días)</option>
+          <option value="vigente">Vigente</option>
+        </select>
+        <button type="submit" className="bg-construserv-orange text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-orange-700 transition">Filtrar</button>
+        {(q || tipo || estado) && (
+          <Link href="/dashboard/documentos" className="border border-gray-300 text-gray-600 px-4 py-2 rounded-lg text-sm hover:bg-gray-50 transition">Limpiar</Link>
+        )}
+      </form>
+
       <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
-        {!documents || documents.length === 0 ? (
+        {documents.length === 0 ? (
           <div className="text-center py-16">
             <FileText className="w-12 h-12 text-gray-300 mx-auto mb-3" />
             <p className="text-gray-500">No hay documentos registrados.</p>

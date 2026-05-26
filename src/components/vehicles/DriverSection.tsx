@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { UserCheck, Plus, X, Phone, CreditCard, FileText, Calendar, FolderOpen } from "lucide-react";
-import { formatDate } from "@/lib/utils";
+import { formatDate, validateRut, formatRut } from "@/lib/utils";
 import DriverDocumentsForm from "./DriverDocumentsForm";
 
 interface Driver {
@@ -54,10 +54,23 @@ export default function DriverSection({ vehicleId, drivers: initialDrivers }: Pr
     setForm((prev) => ({ ...prev, [name]: value }));
   }
 
+  function handleRutBlur() {
+    if (form.driver_rut) {
+      setForm((prev) => ({ ...prev, driver_rut: formatRut(prev.driver_rut) }));
+    }
+  }
+
   async function handleAssign(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
     setError("");
+
+    // Validar RUT si se ingresó
+    if (form.driver_rut && !validateRut(form.driver_rut)) {
+      setError("El RUT ingresado no es válido. Verifica el formato (ej: 12.345.678-9).");
+      setLoading(false);
+      return;
+    }
 
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -228,7 +241,7 @@ export default function DriverSection({ vehicleId, drivers: initialDrivers }: Pr
             </div>
             <div>
               <label className="text-xs text-gray-600 mb-1 block">RUT</label>
-              <input name="driver_rut" value={form.driver_rut} onChange={handleChange} placeholder="12.345.678-9" className={inputClass} />
+              <input name="driver_rut" value={form.driver_rut} onChange={handleChange} onBlur={handleRutBlur} placeholder="12.345.678-9" className={inputClass} />
             </div>
             <div>
               <label className="text-xs text-gray-600 mb-1 block">Teléfono</label>

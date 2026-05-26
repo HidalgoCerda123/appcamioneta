@@ -1,15 +1,41 @@
 import { createClient } from "@/lib/supabase/server";
-import { Plus, Wrench } from "lucide-react";
+import { Plus, Wrench, Search } from "lucide-react";
 import Link from "next/link";
 import { formatCurrency, formatDate, formatKm } from "@/lib/utils";
 
-export default async function MaintenancesPage() {
+export default async function MaintenancesPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ q?: string; tipo?: string; vehiculo?: string }>;
+}) {
+  const { q, tipo, vehiculo } = await searchParams;
   const supabase = await createClient();
 
-  const { data: maintenances } = await supabase
+  const { data: allMaintenances } = await supabase
     .from("maintenances")
-    .select("*, vehicle:vehicles(plate, brand, model, type)")
+    .select("*, vehicle:vehicles(id, plate, brand, model, type)")
     .order("date", { ascending: false });
+
+  const { data: vehicles } = await supabase
+    .from("vehicles")
+    .select("id, plate, brand, model")
+    .order("brand");
+
+  let maintenances = allMaintenances ?? [];
+  if (q) {
+    const lq = q.toLowerCase();
+    maintenances = maintenances.filter((m) => {
+      const v = m.vehicle as { brand: string; model: string; plate: string } | null;
+      return (
+        v?.brand?.toLowerCase().includes(lq) ||
+        v?.model?.toLowerCase().includes(lq) ||
+        v?.plate?.toLowerCase().includes(lq) ||
+        m.workshop_name?.toLowerCase().includes(lq)
+      );
+    });
+  }
+  if (tipo) maintenances = maintenances.filter((m) => m.type === tipo);
+  if (vehiculo) maintenances = maintenances.filter((m) => (m.vehicle as { id: string } | null)?.id === vehiculo);
 
   const typeLabels: Record<string, string> = {
     aceite: "Aceite",
@@ -48,6 +74,47 @@ export default async function MaintenancesPage() {
           Nueva Mantención
         </Link>
       </div>
+
+      {/* Filtros */}
+      <form method="GET" className="bg-white rounded-xl border border-gray-100 shadow-sm p-4 flex flex-wrap gap-3">
+        <div className="relative flex-1 min-w-[160px]">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+          <input
+            name="q"
+            defaultValue={q ?? ""}
+            placeholder="Buscar vehículo o taller..."
+            className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-construserv-orange"
+          />
+        </div>
+        <select
+          name="tipo"
+          defaultValue={tipo ?? ""}
+          className="border border-gray-300 rounded-lg text-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-construserv-orange"
+        >
+          <option value="">Todos los tipos</option>
+          {Object.entries(typeLabels).map(([k, v]) => (
+            <option key={k} value={k}>{v}</option>
+          ))}
+        </select>
+        <select
+          name="vehiculo"
+          defaultValue={vehiculo ?? ""}
+          className="border border-gray-300 rounded-lg text-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-construserv-orange"
+        >
+          <option value="">Todos los vehículos</option>
+          {(vehicles ?? []).map((v) => (
+            <option key={v.id} value={v.id}>{v.brand} {v.model} — {v.plate}</option>
+          ))}
+        </select>
+        <button type="submit" className="bg-construserv-orange text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-orange-700 transition">
+          Filtrar
+        </button>
+        {(q || tipo || vehiculo) && (
+          <Link href="/dashboard/mantenciones" className="border border-gray-300 text-gray-600 px-4 py-2 rounded-lg text-sm hover:bg-gray-50 transition">
+            Limpiar
+          </Link>
+        )}
+      </form>
 
       <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
         {!maintenances || maintenances.length === 0 ? (

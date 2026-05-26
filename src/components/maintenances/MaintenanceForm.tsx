@@ -163,6 +163,19 @@ export default function MaintenanceForm({ vehicles, preselectedVehicleId, mainte
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("No autenticado");
 
+      // Validar que el km no sea menor al registrado en el vehículo
+      if (form.vehicle_id && Number(form.km_at_service) > 0) {
+        const { data: veh } = await supabase.from("vehicles").select("current_km").eq("id", form.vehicle_id).single();
+        if (veh && Number(form.km_at_service) < veh.current_km && !isEditing) {
+          throw new Error(`El kilometraje ingresado (${Number(form.km_at_service).toLocaleString("es-CL")} km) es menor al registrado en el vehículo (${veh.current_km.toLocaleString("es-CL")} km). Verifica el valor.`);
+        }
+      }
+
+      // Validar que next_service_km > km_at_service
+      if (form.next_service_km && Number(form.next_service_km) <= Number(form.km_at_service)) {
+        throw new Error("El km del próximo servicio debe ser mayor al km actual de la mantención.");
+      }
+
       const [newInvoiceUrls, newPhotoUrls] = await Promise.all([
         uploadFiles(invoiceFiles, "maintenance-files"),
         uploadFiles(photoFiles, "maintenance-files"),

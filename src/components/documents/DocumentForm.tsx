@@ -110,6 +110,19 @@ export default function DocumentForm({ vehicles, preselectedVehicleId, document 
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("No autenticado");
 
+      // Validar que fecha de vencimiento sea posterior a fecha de emisión
+      if (form.issue_date && form.expiry_date && form.expiry_date <= form.issue_date) {
+        throw new Error("La fecha de vencimiento debe ser posterior a la fecha de emisión.");
+      }
+
+      // Validar que el km no sea menor al registrado en el vehículo
+      if (form.vehicle_id && form.km_at_renewal && Number(form.km_at_renewal) > 0) {
+        const { data: veh } = await supabase.from("vehicles").select("current_km").eq("id", form.vehicle_id).single();
+        if (veh && Number(form.km_at_renewal) < veh.current_km && !isEditing) {
+          throw new Error(`El kilometraje ingresado (${Number(form.km_at_renewal).toLocaleString("es-CL")} km) es menor al registrado en el vehículo (${veh.current_km.toLocaleString("es-CL")} km). Verifica el valor.`);
+        }
+      }
+
       // Subir nuevos archivos
       const uploadedUrls: string[] = [];
       for (const file of newFiles) {

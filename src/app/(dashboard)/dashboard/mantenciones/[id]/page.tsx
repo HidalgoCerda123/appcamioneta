@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, Wrench, MapPin, Phone, Gauge, Calendar, User, FileImage, Pencil } from "lucide-react";
+import DeleteButton from "@/components/ui/DeleteButton";
 import { formatCurrency, formatDate, formatKm } from "@/lib/utils";
 
 const typeLabels: Record<string, string> = {
@@ -46,13 +47,21 @@ export default async function MaintenanceDetailPage({
           </h2>
           <p className="text-gray-500 text-sm">{vehicle?.brand} {vehicle?.model} — {vehicle?.plate}</p>
         </div>
-        <Link
-          href={`/dashboard/mantenciones/${id}/editar`}
-          className="flex items-center gap-2 border border-gray-300 text-gray-700 px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-50 transition"
-        >
-          <Pencil className="w-4 h-4" />
-          Editar
-        </Link>
+        <div className="flex items-center gap-2">
+          <Link
+            href={`/dashboard/mantenciones/${id}/editar`}
+            className="flex items-center gap-2 border border-gray-300 text-gray-700 px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-50 transition"
+          >
+            <Pencil className="w-4 h-4" />
+            Editar
+          </Link>
+          <DeleteButton
+            table="maintenances"
+            id={id}
+            redirectTo="/dashboard/mantenciones"
+            confirmText="Se eliminará esta mantención permanentemente."
+          />
+        </div>
       </div>
 
       {/* Info principal */}

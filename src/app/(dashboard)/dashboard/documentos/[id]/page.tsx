@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, FileText, Calendar, DollarSign, Building, Hash, Pencil } from "lucide-react";
+import DeleteButton from "@/components/ui/DeleteButton";
 import { formatCurrency, formatDate, getDaysUntil, getAlertColor } from "@/lib/utils";
 
 const typeLabels: Record<string, string> = {
@@ -63,13 +64,21 @@ export default async function DocumentDetailPage({
           <h2 className="text-2xl font-bold text-gray-900">{doc.label}</h2>
           <p className="text-gray-500 text-sm">{vehicle?.brand} {vehicle?.model} — {vehicle?.plate}</p>
         </div>
-        <Link
-          href={`/dashboard/documentos/${id}/editar`}
-          className="flex items-center gap-2 border border-gray-300 text-gray-700 px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-50 transition"
-        >
-          <Pencil className="w-4 h-4" />
-          Editar
-        </Link>
+        <div className="flex items-center gap-2">
+          <Link
+            href={`/dashboard/documentos/${id}/editar`}
+            className="flex items-center gap-2 border border-gray-300 text-gray-700 px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-50 transition"
+          >
+            <Pencil className="w-4 h-4" />
+            Editar
+          </Link>
+          <DeleteButton
+            table="vehicle_documents"
+            id={id}
+            redirectTo="/dashboard/documentos"
+            confirmText="Se eliminará este documento permanentemente."
+          />
+        </div>
       </div>
 
       {/* Estado de vencimiento */}
