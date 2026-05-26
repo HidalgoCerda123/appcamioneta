@@ -1,20 +1,29 @@
 import { createClient } from "@/lib/supabase/server";
-import { Plus, Wrench, Search } from "lucide-react";
+import { Plus, Wrench, Search, ChevronUp, ChevronDown } from "lucide-react";
 import Link from "next/link";
 import { formatCurrency, formatDate, formatKm } from "@/lib/utils";
+import Pagination from "@/components/ui/Pagination";
+
+const PAGE_SIZE = 20;
+
+type SortField = "date" | "total_cost" | "km_at_service" | "type";
+type SortDir = "asc" | "desc";
 
 export default async function MaintenancesPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string; tipo?: string; vehiculo?: string }>;
+  searchParams: Promise<{ q?: string; tipo?: string; vehiculo?: string; page?: string; sort?: string; dir?: string }>;
 }) {
-  const { q, tipo, vehiculo } = await searchParams;
+  const { q, tipo, vehiculo, page: pageParam, sort, dir } = await searchParams;
   const supabase = await createClient();
+
+  const sortField: SortField = (["date", "total_cost", "km_at_service", "type"].includes(sort ?? "") ? sort : "date") as SortField;
+  const sortDir: SortDir = dir === "asc" ? "asc" : "desc";
 
   const { data: allMaintenances } = await supabase
     .from("maintenances")
     .select("*, vehicle:vehicles(id, plate, brand, model, type)")
-    .order("date", { ascending: false });
+    .order(sortField, { ascending: sortDir === "asc" });
 
   const { data: vehicles } = await supabase
     .from("vehicles")
@@ -36,6 +45,11 @@ export default async function MaintenancesPage({
   }
   if (tipo) maintenances = maintenances.filter((m) => m.type === tipo);
   if (vehiculo) maintenances = maintenances.filter((m) => (m.vehicle as { id: string } | null)?.id === vehiculo);
+
+  const total = maintenances.length;
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  const page = Math.min(Math.max(1, parseInt(pageParam ?? "1") || 1), totalPages);
+  const paginated = maintenances.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
   const typeLabels: Record<string, string> = {
     aceite: "Aceite",
@@ -59,12 +73,41 @@ export default async function MaintenancesPage({
     otro: "bg-gray-100 text-gray-600",
   };
 
+  function buildSortHref(field: SortField) {
+    const newDir = sortField === field && sortDir === "desc" ? "asc" : "desc";
+    const params = new URLSearchParams();
+    if (q) params.set("q", q);
+    if (tipo) params.set("tipo", tipo);
+    if (vehiculo) params.set("vehiculo", vehiculo);
+    params.set("sort", field);
+    params.set("dir", newDir);
+    return `/dashboard/mantenciones?${params.toString()}`;
+  }
+
+  function buildPageHref(p: number) {
+    const params = new URLSearchParams();
+    if (q) params.set("q", q);
+    if (tipo) params.set("tipo", tipo);
+    if (vehiculo) params.set("vehiculo", vehiculo);
+    if (sortField !== "date") params.set("sort", sortField);
+    if (sortDir !== "desc") params.set("dir", sortDir);
+    params.set("page", String(p));
+    return `/dashboard/mantenciones?${params.toString()}`;
+  }
+
+  function SortIcon({ field }: { field: SortField }) {
+    if (sortField !== field) return <ChevronDown className="w-3 h-3 text-gray-300 inline ml-1" />;
+    return sortDir === "desc"
+      ? <ChevronDown className="w-3 h-3 text-construserv-orange inline ml-1" />
+      : <ChevronUp className="w-3 h-3 text-construserv-orange inline ml-1" />;
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-2xl font-bold text-gray-900">Mantenciones</h2>
-          <p className="text-gray-500 text-sm mt-1">{maintenances?.length ?? 0} registros</p>
+          <p className="text-gray-500 text-sm mt-1">{total} registros</p>
         </div>
         <Link
           href="/dashboard/mantenciones/nueva"
@@ -77,6 +120,8 @@ export default async function MaintenancesPage({
 
       {/* Filtros */}
       <form method="GET" className="bg-white rounded-xl border border-gray-100 shadow-sm p-4 flex flex-wrap gap-3">
+        {sort && <input type="hidden" name="sort" value={sort} />}
+        {dir && <input type="hidden" name="dir" value={dir} />}
         <div className="relative flex-1 min-w-[160px]">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
           <input
@@ -130,7 +175,7 @@ export default async function MaintenancesPage({
           <>
             {/* Vista mobile: cards */}
             <div className="md:hidden divide-y divide-gray-100">
-              {maintenances.map((m) => {
+              {paginated.map((m) => {
                 const v = m.vehicle as { brand: string; model: string; plate: string };
                 return (
                   <Link key={m.id} href={`/dashboard/mantenciones/${m.id}`} className="flex items-center justify-between px-4 py-3 hover:bg-gray-50 transition">
@@ -154,15 +199,31 @@ export default async function MaintenancesPage({
               <thead className="bg-gray-50 border-b border-gray-100">
                 <tr>
                   <th className="text-left px-5 py-3 text-gray-500 font-medium">Vehículo</th>
-                  <th className="text-left px-5 py-3 text-gray-500 font-medium">Tipo</th>
+                  <th className="text-left px-5 py-3 text-gray-500 font-medium">
+                    <Link href={buildSortHref("type")} className="hover:text-gray-800 transition inline-flex items-center">
+                      Tipo<SortIcon field="type" />
+                    </Link>
+                  </th>
                   <th className="text-left px-5 py-3 text-gray-500 font-medium">Taller</th>
-                  <th className="text-left px-5 py-3 text-gray-500 font-medium">Kilometraje</th>
-                  <th className="text-left px-5 py-3 text-gray-500 font-medium">Fecha</th>
-                  <th className="text-right px-5 py-3 text-gray-500 font-medium">Costo</th>
+                  <th className="text-left px-5 py-3 text-gray-500 font-medium">
+                    <Link href={buildSortHref("km_at_service")} className="hover:text-gray-800 transition inline-flex items-center">
+                      Kilometraje<SortIcon field="km_at_service" />
+                    </Link>
+                  </th>
+                  <th className="text-left px-5 py-3 text-gray-500 font-medium">
+                    <Link href={buildSortHref("date")} className="hover:text-gray-800 transition inline-flex items-center">
+                      Fecha<SortIcon field="date" />
+                    </Link>
+                  </th>
+                  <th className="text-right px-5 py-3 text-gray-500 font-medium">
+                    <Link href={buildSortHref("total_cost")} className="hover:text-gray-800 transition inline-flex items-center justify-end w-full">
+                      Costo<SortIcon field="total_cost" />
+                    </Link>
+                  </th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-50">
-                {maintenances.map((m) => (
+                {paginated.map((m) => (
                   <tr key={m.id} className="hover:bg-gray-50 transition cursor-pointer">
                     <td className="px-5 py-3">
                       <Link href={`/dashboard/mantenciones/${m.id}`} className="block">
@@ -187,6 +248,7 @@ export default async function MaintenancesPage({
                 ))}
               </tbody>
             </table>
+            <Pagination page={page} totalPages={totalPages} buildHref={buildPageHref} />
           </>
         )}
       </div>

@@ -1,7 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, Truck, Gauge, Wrench, FileText, Pencil } from "lucide-react";
+import { ArrowLeft, Truck, Gauge, Wrench, FileText, Pencil, Clock } from "lucide-react";
 import DeleteButton from "@/components/ui/DeleteButton";
 import { formatCurrency, formatDate, formatKm, getDaysUntil, getAlertColor } from "@/lib/utils";
 import DriverSection from "@/components/vehicles/DriverSection";
@@ -153,6 +153,10 @@ export default async function VehicleDetailPage({
             <p className="text-sm text-gray-600">{vehicle.notes}</p>
           </div>
         )}
+        <div className="mt-4 pt-3 border-t border-gray-100 flex items-center gap-1.5 text-xs text-gray-400">
+          <Clock className="w-3.5 h-3.5" />
+          Registrado el {new Date(vehicle.created_at).toLocaleDateString("es-CL", { day: "numeric", month: "long", year: "numeric" })}
+        </div>
       </div>
 
       {/* Conductor */}

@@ -20,11 +20,20 @@ export default async function DashboardLayout({
     .eq("id", user.id)
     .single();
 
+  // Contar alertas activas para el badge de la campana
+  const in30 = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split("T")[0];
+  const [{ count: docsCount }, { count: licCount }, { count: maintCount }] = await Promise.all([
+    supabase.from("vehicle_documents").select("id", { count: "exact", head: true }).lte("expiry_date", in30),
+    supabase.from("vehicle_drivers").select("id", { count: "exact", head: true }).is("end_date", null).not("license_expiry", "is", null).lte("license_expiry", in30),
+    supabase.from("maintenances").select("id", { count: "exact", head: true }).not("next_service_date", "is", null).lte("next_service_date", in30),
+  ]);
+  const alertCount = (docsCount ?? 0) + (licCount ?? 0) + (maintCount ?? 0);
+
   return (
-    <div className="flex h-screen bg-gray-50 overflow-hidden">
+    <div className="flex h-screen bg-gray-50 dark:bg-gray-950 overflow-hidden">
       <Sidebar profile={profile} />
       <div className="flex-1 flex flex-col overflow-hidden">
-        <Header profile={profile} />
+        <Header profile={profile} alertCount={alertCount} />
         <main className="flex-1 overflow-y-auto p-4 md:p-6 pb-20 md:pb-6">
           {children}
         </main>

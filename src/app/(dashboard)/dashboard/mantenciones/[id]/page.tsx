@@ -1,7 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, Wrench, MapPin, Phone, Gauge, Calendar, User, FileImage, Pencil } from "lucide-react";
+import { ArrowLeft, Wrench, MapPin, Phone, Gauge, Calendar, User, FileImage, Pencil, Clock } from "lucide-react";
 import DeleteButton from "@/components/ui/DeleteButton";
 import { formatCurrency, formatDate, formatKm } from "@/lib/utils";
 
@@ -209,6 +209,11 @@ export default async function MaintenanceDetailPage({
           )}
         </div>
       )}
+      {/* Registro */}
+      <div className="flex items-center gap-1.5 text-xs text-gray-400 pb-2">
+        <Clock className="w-3.5 h-3.5" />
+        Registrado el {new Date(m.created_at).toLocaleDateString("es-CL", { day: "numeric", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit" })}
+      </div>
     </div>
   );
 }

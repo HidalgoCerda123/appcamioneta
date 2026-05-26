@@ -1,5 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
-import { Plus, Truck } from "lucide-react";
+import { Plus, Truck, Upload } from "lucide-react";
 import Link from "next/link";
 import VehicleCard from "@/components/vehicles/VehicleCard";
 import type { Vehicle } from "@/types";
@@ -38,13 +38,22 @@ export default async function VehiclesPage({
           <h2 className="text-2xl font-bold text-gray-900">Vehículos</h2>
           <p className="text-gray-500 text-sm mt-1">{filtered.length} vehículos registrados</p>
         </div>
-        <Link
-          href="/dashboard/vehiculos/nuevo"
-          className="flex items-center gap-2 bg-construserv-orange hover:bg-orange-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition"
-        >
-          <Plus className="w-4 h-4" />
-          Nuevo Vehículo
-        </Link>
+        <div className="flex items-center gap-2">
+          <Link
+            href="/dashboard/vehiculos/importar"
+            className="hidden sm:flex items-center gap-2 border border-gray-300 text-gray-700 px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-50 transition"
+          >
+            <Upload className="w-4 h-4" />
+            Importar CSV
+          </Link>
+          <Link
+            href="/dashboard/vehiculos/nuevo"
+            className="flex items-center gap-2 bg-construserv-orange hover:bg-orange-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition"
+          >
+            <Plus className="w-4 h-4" />
+            Nuevo Vehículo
+          </Link>
+        </div>
       </div>
 
       {/* Filtros */}

@@ -1,20 +1,29 @@
 import { createClient } from "@/lib/supabase/server";
-import { Plus, FileText, AlertTriangle, Search } from "lucide-react";
+import { Plus, FileText, AlertTriangle, Search, ChevronUp, ChevronDown } from "lucide-react";
 import Link from "next/link";
 import { formatDate, getDaysUntil, getAlertColor } from "@/lib/utils";
+import Pagination from "@/components/ui/Pagination";
+
+const PAGE_SIZE = 20;
+
+type SortField = "expiry_date" | "type" | "label";
+type SortDir = "asc" | "desc";
 
 export default async function DocumentsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string; tipo?: string; estado?: string }>;
+  searchParams: Promise<{ q?: string; tipo?: string; estado?: string; page?: string; sort?: string; dir?: string }>;
 }) {
-  const { q, tipo, estado } = await searchParams;
+  const { q, tipo, estado, page: pageParam, sort, dir } = await searchParams;
   const supabase = await createClient();
+
+  const sortField: SortField = (["expiry_date", "type", "label"].includes(sort ?? "") ? sort : "expiry_date") as SortField;
+  const sortDir: SortDir = dir === "desc" ? "desc" : "asc";
 
   const { data: allDocuments } = await supabase
     .from("vehicle_documents")
     .select("*, vehicle:vehicles(plate, brand, model)")
-    .order("expiry_date", { ascending: true });
+    .order(sortField, { ascending: sortDir === "asc" });
 
   let documents = allDocuments ?? [];
   if (q) {
@@ -34,6 +43,11 @@ export default async function DocumentsPage({
   else if (estado === "proximo") documents = documents.filter((d) => { const days = getDaysUntil(d.expiry_date); return days >= 0 && days <= 30; });
   else if (estado === "vigente") documents = documents.filter((d) => getDaysUntil(d.expiry_date) > 30);
 
+  const total = documents.length;
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  const page = Math.min(Math.max(1, parseInt(pageParam ?? "1") || 1), totalPages);
+  const paginated = documents.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+
   const typeLabels: Record<string, string> = {
     revision_tecnica: "Revisión Técnica",
     soap: "SOAP",
@@ -43,12 +57,41 @@ export default async function DocumentsPage({
     otro: "Otro",
   };
 
+  function buildSortHref(field: SortField) {
+    const newDir = sortField === field && sortDir === "asc" ? "desc" : "asc";
+    const params = new URLSearchParams();
+    if (q) params.set("q", q);
+    if (tipo) params.set("tipo", tipo);
+    if (estado) params.set("estado", estado);
+    params.set("sort", field);
+    params.set("dir", newDir);
+    return `/dashboard/documentos?${params.toString()}`;
+  }
+
+  function buildPageHref(p: number) {
+    const params = new URLSearchParams();
+    if (q) params.set("q", q);
+    if (tipo) params.set("tipo", tipo);
+    if (estado) params.set("estado", estado);
+    if (sortField !== "expiry_date") params.set("sort", sortField);
+    if (sortDir !== "asc") params.set("dir", sortDir);
+    params.set("page", String(p));
+    return `/dashboard/documentos?${params.toString()}`;
+  }
+
+  function SortIcon({ field }: { field: SortField }) {
+    if (sortField !== field) return <ChevronUp className="w-3 h-3 text-gray-300 inline ml-1" />;
+    return sortDir === "asc"
+      ? <ChevronUp className="w-3 h-3 text-construserv-orange inline ml-1" />
+      : <ChevronDown className="w-3 h-3 text-construserv-orange inline ml-1" />;
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-2xl font-bold text-gray-900">Documentos</h2>
-          <p className="text-gray-500 text-sm mt-1">{documents?.length ?? 0} documentos registrados</p>
+          <p className="text-gray-500 text-sm mt-1">{total} documentos registrados</p>
         </div>
         <Link
           href="/dashboard/documentos/nuevo"
@@ -61,6 +104,8 @@ export default async function DocumentsPage({
 
       {/* Filtros */}
       <form method="GET" className="bg-white rounded-xl border border-gray-100 shadow-sm p-4 flex flex-wrap gap-3">
+        {sort && <input type="hidden" name="sort" value={sort} />}
+        {dir && <input type="hidden" name="dir" value={dir} />}
         <div className="relative flex-1 min-w-[160px]">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
           <input
@@ -96,7 +141,7 @@ export default async function DocumentsPage({
           <>
             {/* Vista mobile: cards */}
             <div className="md:hidden divide-y divide-gray-100">
-              {documents.map((doc) => {
+              {paginated.map((doc) => {
                 const days = getDaysUntil(doc.expiry_date);
                 const color = getAlertColor(days);
                 const vehicle = doc.vehicle as { brand: string; model: string; plate: string };
@@ -134,14 +179,26 @@ export default async function DocumentsPage({
               <thead className="bg-gray-50 border-b border-gray-100">
                 <tr>
                   <th className="text-left px-5 py-3 text-gray-500 font-medium">Vehículo</th>
-                  <th className="text-left px-5 py-3 text-gray-500 font-medium">Documento</th>
-                  <th className="text-left px-5 py-3 text-gray-500 font-medium">Tipo</th>
-                  <th className="text-left px-5 py-3 text-gray-500 font-medium">Vencimiento</th>
+                  <th className="text-left px-5 py-3 text-gray-500 font-medium">
+                    <Link href={buildSortHref("label")} className="hover:text-gray-800 transition inline-flex items-center">
+                      Documento<SortIcon field="label" />
+                    </Link>
+                  </th>
+                  <th className="text-left px-5 py-3 text-gray-500 font-medium">
+                    <Link href={buildSortHref("type")} className="hover:text-gray-800 transition inline-flex items-center">
+                      Tipo<SortIcon field="type" />
+                    </Link>
+                  </th>
+                  <th className="text-left px-5 py-3 text-gray-500 font-medium">
+                    <Link href={buildSortHref("expiry_date")} className="hover:text-gray-800 transition inline-flex items-center">
+                      Vencimiento<SortIcon field="expiry_date" />
+                    </Link>
+                  </th>
                   <th className="text-left px-5 py-3 text-gray-500 font-medium">Estado</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-50">
-                {documents.map((doc) => {
+                {paginated.map((doc) => {
                   const days = getDaysUntil(doc.expiry_date);
                   const color = getAlertColor(days);
                   const vehicle = doc.vehicle as { brand: string; model: string; plate: string };
@@ -183,6 +240,7 @@ export default async function DocumentsPage({
                 })}
               </tbody>
             </table>
+            <Pagination page={page} totalPages={totalPages} buildHref={buildPageHref} />
           </>
         )}
       </div>

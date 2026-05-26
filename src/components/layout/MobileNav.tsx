@@ -65,11 +65,11 @@ export default function MobileNav({ profile }: { profile: Profile | null }) {
           onClick={() => setShowMore(false)}
         >
           <div
-            className="absolute bottom-16 left-0 right-0 bg-white rounded-t-2xl p-4 shadow-xl"
+            className="absolute bottom-16 left-0 right-0 bg-white dark:bg-gray-900 rounded-t-2xl p-4 shadow-xl"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between mb-4">
-              <span className="font-semibold text-gray-800">Más opciones</span>
+              <span className="font-semibold text-gray-800 dark:text-gray-100">Más opciones</span>
               <button onClick={() => setShowMore(false)}>
                 <X className="w-5 h-5 text-gray-500" />
               </button>
@@ -132,7 +132,7 @@ export default function MobileNav({ profile }: { profile: Profile | null }) {
       )}
 
       {/* Barra de navegación inferior */}
-      <nav className="mobile-nav md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-30 flex items-stretch shadow-[0_-2px_10px_rgba(0,0,0,0.08)]">
+      <nav className="mobile-nav md:hidden fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-700 z-30 flex items-stretch shadow-[0_-2px_10px_rgba(0,0,0,0.08)]">
         {mainItems.map(({ href, label, icon: Icon }) => {
           const isActive =
             href === "/dashboard"
