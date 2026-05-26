@@ -1,7 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, Wrench, MapPin, Phone, Gauge, Calendar, User, FileImage, Pencil, Clock } from "lucide-react";
+import { ArrowLeft, Wrench, MapPin, Phone, Gauge, Calendar, User, FileImage, Pencil, Clock, AlertTriangle } from "lucide-react";
 import DeleteButton from "@/components/ui/DeleteButton";
 import { formatCurrency, formatDate, formatKm } from "@/lib/utils";
 
@@ -172,6 +172,13 @@ export default async function MaintenanceDetailPage({
             <span className="text-construserv-orange">{formatCurrency(m.total_cost)}</span>
           </div>
         </div>
+        {/* Advertencia si el total no cuadra con mano de obra + repuestos */}
+        {Math.abs(m.total_cost - (m.labor_cost + m.parts_cost)) > 1 && (
+          <div className="mt-3 flex items-center gap-2 text-xs text-yellow-700 bg-yellow-50 border border-yellow-200 rounded-lg px-3 py-2">
+            <AlertTriangle className="w-3.5 h-3.5 flex-shrink-0" />
+            El total ({formatCurrency(m.total_cost)}) no coincide con mano de obra + repuestos ({formatCurrency(m.labor_cost + m.parts_cost)}). Considera editar el registro.
+          </div>
+        )}
       </div>
 
       {/* Archivos */}
@@ -212,7 +219,7 @@ export default async function MaintenanceDetailPage({
       {/* Registro */}
       <div className="flex items-center gap-1.5 text-xs text-gray-400 pb-2">
         <Clock className="w-3.5 h-3.5" />
-        Registrado el {new Date(m.created_at).toLocaleDateString("es-CL", { day: "numeric", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit" })}
+        Registrado el {new Date(m.created_at).toLocaleString("es-CL", { day: "numeric", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit" })}
       </div>
     </div>
   );

@@ -215,7 +215,7 @@ export default async function DocumentDetailPage({
       {/* Registro */}
       <div className="flex items-center gap-1.5 text-xs text-gray-400 pb-2">
         <Clock className="w-3.5 h-3.5" />
-        Registrado el {new Date(doc.created_at).toLocaleDateString("es-CL", { day: "numeric", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit" })}
+        Registrado el {new Date(doc.created_at).toLocaleString("es-CL", { day: "numeric", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit" })}
       </div>
     </div>
   );

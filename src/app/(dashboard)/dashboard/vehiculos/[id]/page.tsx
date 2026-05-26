@@ -55,6 +55,9 @@ export default async function VehicleDetailPage({
     supabase.from("vehicle_drivers").select("*").eq("vehicle_id", id).order("start_date", { ascending: false }),
   ]);
 
+  // Próxima mantención programada (la más reciente con next_service_date o next_service_km)
+  const nextMaint = maintenances?.find((m) => m.next_service_date || m.next_service_km);
+
   if (!vehicle) notFound();
 
   const status = statusConfig[vehicle.status as keyof typeof statusConfig];
@@ -91,6 +94,26 @@ export default async function VehicleDetailPage({
           />
         </div>
       </div>
+
+      {/* Alerta próxima mantención */}
+      {nextMaint && (nextMaint.next_service_date || nextMaint.next_service_km) && (
+        <div className="bg-orange-50 border border-orange-200 rounded-xl px-5 py-3 flex items-center gap-3">
+          <Wrench className="w-4 h-4 text-orange-500 flex-shrink-0" />
+          <p className="text-sm text-orange-700">
+            <span className="font-semibold">Próxima mantención programada: </span>
+            {nextMaint.next_service_date && (
+              <span>
+                {formatDate(nextMaint.next_service_date)}
+                {getDaysUntil(nextMaint.next_service_date) <= 0
+                  ? " — vencida"
+                  : ` — en ${getDaysUntil(nextMaint.next_service_date)} días`}
+              </span>
+            )}
+            {nextMaint.next_service_date && nextMaint.next_service_km && " · "}
+            {nextMaint.next_service_km && <span>a los {formatKm(nextMaint.next_service_km)}</span>}
+          </p>
+        </div>
+      )}
 
       {/* Ficha del vehículo */}
       <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4 md:p-6">

@@ -1,60 +1,94 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { KeyRound, CheckCircle } from "lucide-react";
+import { KeyRound, CheckCircle, User, Mail } from "lucide-react";
 
 export default function PerfilPage() {
   const supabase = createClient();
+
+  const [userEmail, setUserEmail] = useState("");
+  const [fullName, setFullName] = useState("");
+  const [originalName, setOriginalName] = useState("");
+  const [profileId, setProfileId] = useState("");
+
   const [current, setCurrent] = useState("");
   const [newPass, setNewPass] = useState("");
   const [confirm, setConfirm] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
-  const [success, setSuccess] = useState(false);
 
-  async function handleSubmit(e: React.FormEvent) {
+  const [loadingProfile, setLoadingProfile] = useState(true);
+  const [savingName, setSavingName] = useState(false);
+  const [savingPass, setSavingPass] = useState(false);
+  const [nameMsg, setNameMsg] = useState("");
+  const [passMsg, setPassMsg] = useState("");
+  const [passError, setPassError] = useState("");
+
+  const inputClass = "w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-construserv-orange";
+
+  useEffect(() => {
+    async function load() {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      setUserEmail(user.email ?? "");
+      const { data: profile } = await supabase.from("profiles").select("id, full_name").eq("id", user.id).single();
+      if (profile) {
+        setFullName(profile.full_name ?? "");
+        setOriginalName(profile.full_name ?? "");
+        setProfileId(profile.id);
+      }
+      setLoadingProfile(false);
+    }
+    load();
+  }, []);
+
+  async function handleSaveName(e: React.FormEvent) {
     e.preventDefault();
-    setError("");
-    setSuccess(false);
-
-    if (newPass.length < 6) {
-      setError("La nueva contraseña debe tener al menos 6 caracteres.");
-      return;
+    if (!fullName.trim() || fullName === originalName) return;
+    setSavingName(true);
+    setNameMsg("");
+    const { error } = await supabase.from("profiles").update({ full_name: fullName.trim() }).eq("id", profileId);
+    setSavingName(false);
+    if (error) {
+      setNameMsg("Error al guardar: " + error.message);
+    } else {
+      setOriginalName(fullName.trim());
+      setNameMsg("Nombre actualizado correctamente.");
+      setTimeout(() => setNameMsg(""), 3000);
     }
-    if (newPass !== confirm) {
-      setError("Las contraseñas no coinciden.");
-      return;
-    }
+  }
 
-    setLoading(true);
+  async function handleChangePassword(e: React.FormEvent) {
+    e.preventDefault();
+    setPassError("");
+    setPassMsg("");
 
-    // Verificar contraseña actual re-autenticando
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user?.email) { setError("No se pudo obtener tu usuario."); setLoading(false); return; }
+    if (newPass.length < 6) { setPassError("La nueva contraseña debe tener al menos 6 caracteres."); return; }
+    if (newPass !== confirm) { setPassError("Las contraseñas no coinciden."); return; }
 
-    const { error: signInError } = await supabase.auth.signInWithPassword({
-      email: user.email,
-      password: current,
-    });
+    setSavingPass(true);
 
-    if (signInError) {
-      setError("La contraseña actual es incorrecta.");
-      setLoading(false);
-      return;
-    }
+    const { error: signInError } = await supabase.auth.signInWithPassword({ email: userEmail, password: current });
+    if (signInError) { setPassError("La contraseña actual es incorrecta."); setSavingPass(false); return; }
 
     const { error: updateError } = await supabase.auth.updateUser({ password: newPass });
-    setLoading(false);
+    setSavingPass(false);
 
     if (updateError) {
-      setError(updateError.message);
+      setPassError(updateError.message);
     } else {
-      setSuccess(true);
-      setCurrent("");
-      setNewPass("");
-      setConfirm("");
+      setPassMsg("Contraseña actualizada correctamente.");
+      setCurrent(""); setNewPass(""); setConfirm("");
+      setTimeout(() => setPassMsg(""), 3000);
     }
+  }
+
+  if (loadingProfile) {
+    return (
+      <div className="max-w-lg space-y-6">
+        <div><h2 className="text-2xl font-bold text-gray-900">Mi Perfil</h2></div>
+        <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-6 animate-pulse h-32" />
+      </div>
+    );
   }
 
   return (
@@ -64,62 +98,83 @@ export default function PerfilPage() {
         <p className="text-gray-500 text-sm mt-1">Administra tu cuenta</p>
       </div>
 
+      {/* Avatar + email */}
+      <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-6 flex items-center gap-4">
+        <div className="w-16 h-16 rounded-full bg-construserv-orange flex items-center justify-center text-white font-bold text-2xl flex-shrink-0">
+          {fullName.charAt(0).toUpperCase() || "U"}
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="font-semibold text-gray-900 text-lg truncate">{fullName || "Sin nombre"}</p>
+          <p className="text-sm text-gray-500 flex items-center gap-1.5 mt-0.5">
+            <Mail className="w-3.5 h-3.5" /> {userEmail}
+          </p>
+        </div>
+      </div>
+
+      {/* Editar nombre */}
+      <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-6">
+        <h3 className="font-semibold text-gray-800 flex items-center gap-2 mb-5">
+          <User className="w-4 h-4 text-construserv-orange" />
+          Nombre en la aplicación
+        </h3>
+        <form onSubmit={handleSaveName} className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Nombre completo</label>
+            <input
+              type="text"
+              value={fullName}
+              onChange={(e) => setFullName(e.target.value)}
+              required
+              placeholder="Ej: Ignacio Hidalgo"
+              className={inputClass}
+            />
+          </div>
+          {nameMsg && (
+            <div className="flex items-center gap-2 bg-green-50 border border-green-200 text-green-700 px-4 py-2.5 rounded-lg text-sm">
+              <CheckCircle className="w-4 h-4 flex-shrink-0" /> {nameMsg}
+            </div>
+          )}
+          <button
+            type="submit"
+            disabled={savingName || !fullName.trim() || fullName === originalName}
+            className="w-full bg-construserv-orange hover:bg-orange-700 text-white py-2.5 rounded-lg font-medium transition disabled:opacity-50 text-sm"
+          >
+            {savingName ? "Guardando..." : "Guardar nombre"}
+          </button>
+        </form>
+      </div>
+
+      {/* Cambiar contraseña */}
       <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-6">
         <h3 className="font-semibold text-gray-800 flex items-center gap-2 mb-5">
           <KeyRound className="w-4 h-4 text-construserv-orange" />
           Cambiar contraseña
         </h3>
-
-        {success && (
-          <div className="flex items-center gap-2 bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg text-sm mb-4">
-            <CheckCircle className="w-4 h-4 flex-shrink-0" />
-            Contraseña actualizada correctamente.
+        {passMsg && (
+          <div className="flex items-center gap-2 bg-green-50 border border-green-200 text-green-700 px-4 py-2.5 rounded-lg text-sm mb-4">
+            <CheckCircle className="w-4 h-4 flex-shrink-0" /> {passMsg}
           </div>
         )}
-
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleChangePassword} className="space-y-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Contraseña actual</label>
-            <input
-              type="password"
-              value={current}
-              onChange={(e) => setCurrent(e.target.value)}
-              required
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-construserv-orange"
-            />
+            <input type="password" value={current} onChange={(e) => setCurrent(e.target.value)} required className={inputClass} />
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Nueva contraseña</label>
-            <input
-              type="password"
-              value={newPass}
-              onChange={(e) => setNewPass(e.target.value)}
-              required
-              placeholder="Mínimo 6 caracteres"
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-construserv-orange"
-            />
+            <input type="password" value={newPass} onChange={(e) => setNewPass(e.target.value)} required placeholder="Mínimo 6 caracteres" className={inputClass} />
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Confirmar nueva contraseña</label>
-            <input
-              type="password"
-              value={confirm}
-              onChange={(e) => setConfirm(e.target.value)}
-              required
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-construserv-orange"
-            />
+            <input type="password" value={confirm} onChange={(e) => setConfirm(e.target.value)} required className={inputClass} />
           </div>
-
-          {error && (
-            <p className="text-sm text-red-600 bg-red-50 px-3 py-2 rounded-lg">{error}</p>
-          )}
-
+          {passError && <p className="text-sm text-red-600 bg-red-50 px-3 py-2 rounded-lg">{passError}</p>}
           <button
             type="submit"
-            disabled={loading}
-            className="w-full bg-construserv-orange hover:bg-orange-700 text-white py-2.5 rounded-lg font-medium transition disabled:opacity-50"
+            disabled={savingPass}
+            className="w-full bg-construserv-orange hover:bg-orange-700 text-white py-2.5 rounded-lg font-medium transition disabled:opacity-50 text-sm"
           >
-            {loading ? "Guardando..." : "Cambiar contraseña"}
+            {savingPass ? "Guardando..." : "Cambiar contraseña"}
           </button>
         </form>
       </div>

@@ -125,6 +125,8 @@ export default function DriverSection({ vehicleId, drivers: initialDrivers }: Pr
   }
 
   async function handleEndAssignment(driverId: string) {
+    const driver = drivers.find((d) => d.id === driverId);
+    if (!confirm(`¿Terminar asignación de ${driver?.driver_name ?? "este conductor"} hoy? Esta acción no se puede deshacer.`)) return;
     const today = new Date().toISOString().split("T")[0];
     await supabase.from("vehicle_drivers").update({ end_date: today }).eq("id", driverId);
     setDrivers((prev) => prev.map((d) => d.id === driverId ? { ...d, end_date: today } : d));

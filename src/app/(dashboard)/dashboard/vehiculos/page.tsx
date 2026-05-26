@@ -1,5 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
-import { Plus, Truck, Upload } from "lucide-react";
+import { Plus, Truck, Upload, Search } from "lucide-react";
 import Link from "next/link";
 import VehicleCard from "@/components/vehicles/VehicleCard";
 import type { Vehicle } from "@/types";
@@ -27,7 +27,8 @@ export default async function VehiclesPage({
         (v) =>
           v.plate.toLowerCase().includes(params.q!.toLowerCase()) ||
           v.brand.toLowerCase().includes(params.q!.toLowerCase()) ||
-          v.model.toLowerCase().includes(params.q!.toLowerCase())
+          v.model.toLowerCase().includes(params.q!.toLowerCase()) ||
+          (v.vin ?? "").toLowerCase().includes(params.q!.toLowerCase())
       )
     : (vehicles ?? []);
 
@@ -56,26 +57,40 @@ export default async function VehiclesPage({
         </div>
       </div>
 
-      {/* Filtros */}
-      <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4 flex flex-wrap gap-3">
-        {[
-          { label: "Todos", value: "", key: "status" },
-          { label: "Activos", value: "activo", key: "status" },
-          { label: "En Mantención", value: "en_mantencion", key: "status" },
-          { label: "Fuera de Servicio", value: "fuera_de_servicio", key: "status" },
-        ].map(({ label, value }) => (
-          <Link
-            key={label}
-            href={value ? `/dashboard/vehiculos?status=${value}` : "/dashboard/vehiculos"}
-            className={`px-3 py-1.5 rounded-full text-sm font-medium transition ${
-              (params.status ?? "") === value
-                ? "bg-construserv-orange text-white"
-                : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-            }`}
-          >
-            {label}
-          </Link>
-        ))}
+      {/* Búsqueda + Filtros */}
+      <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4 space-y-3">
+        <form method="GET" className="relative">
+          {params.status && <input type="hidden" name="status" value={params.status} />}
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+          <input
+            name="q"
+            defaultValue={params.q ?? ""}
+            placeholder="Buscar por patente, marca, modelo o VIN..."
+            className="w-full pl-9 pr-4 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-construserv-orange"
+          />
+        </form>
+        <div className="flex flex-wrap gap-2">
+          {[
+            { label: "Todos", value: "" },
+            { label: "Activos", value: "activo" },
+            { label: "En Mantención", value: "en_mantencion" },
+            { label: "Fuera de Servicio", value: "fuera_de_servicio" },
+          ].map(({ label, value }) => (
+            <Link
+              key={label}
+              href={value
+                ? `/dashboard/vehiculos?status=${value}${params.q ? `&q=${encodeURIComponent(params.q)}` : ""}`
+                : `/dashboard/vehiculos${params.q ? `?q=${encodeURIComponent(params.q)}` : ""}`}
+              className={`px-3 py-1.5 rounded-full text-sm font-medium transition ${
+                (params.status ?? "") === value
+                  ? "bg-construserv-orange text-white"
+                  : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+              }`}
+            >
+              {label}
+            </Link>
+          ))}
+        </div>
       </div>
 
       {/* Grid de vehículos */}

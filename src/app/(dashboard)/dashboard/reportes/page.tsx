@@ -1,64 +1,73 @@
 import { createClient } from "@/lib/supabase/server";
 import { formatCurrency } from "@/lib/utils";
 import ReportCharts from "@/components/reports/ReportCharts";
-import { TrendingUp, DollarSign, Wrench, FileWarning } from "lucide-react";
+import ReportExport from "@/components/reports/ReportExport";
+import { TrendingUp, DollarSign, Wrench, FileWarning, ChevronLeft, ChevronRight } from "lucide-react";
+import Link from "next/link";
 
-export default async function ReportsPage() {
+export default async function ReportsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ year?: string }>;
+}) {
+  const { year: yearParam } = await searchParams;
   const supabase = await createClient();
 
   const currentYear = new Date().getFullYear();
+  const selectedYear = yearParam ? parseInt(yearParam) : currentYear;
+  const prevYear = selectedYear - 1;
+  const nextYear = selectedYear + 1;
 
-  const [
-    { data: maintenances },
-    { data: documents },
-  ] = await Promise.all([
+  const [{ data: maintenances }, { data: documents }] = await Promise.all([
     supabase.from("maintenances").select("*, vehicle:vehicles(plate, brand, model, type)").order("date"),
     supabase.from("vehicle_documents").select("*, vehicle:vehicles(plate, brand, model)").order("issue_date"),
   ]);
 
-  // ── Gastos por mes (mantenciones + documentos) ──────────────────────────
+  // ── Gastos por mes ──────────────────────────────────────────────────────────
   const monthlySpend = Array.from({ length: 12 }, (_, i) => ({
-    mes: new Date(currentYear, i).toLocaleString("es-CL", { month: "short" }),
+    mes: new Date(selectedYear, i).toLocaleString("es-CL", { month: "short" }),
     mantenciones: 0,
     documentos: 0,
   }));
 
   maintenances?.forEach((m) => {
     const date = new Date(m.date);
-    if (date.getFullYear() === currentYear) {
+    if (date.getFullYear() === selectedYear) {
       monthlySpend[date.getMonth()].mantenciones += m.total_cost;
     }
   });
 
   documents?.forEach((d) => {
     if (!d.amount_paid) return;
-    // Usar issue_date si existe, si no expiry_date como referencia
     const refDate = d.issue_date ? new Date(d.issue_date) : null;
-    if (refDate && refDate.getFullYear() === currentYear) {
+    if (refDate && refDate.getFullYear() === selectedYear) {
       monthlySpend[refDate.getMonth()].documentos += d.amount_paid;
     }
   });
 
-  // ── Gastos por categoría ─────────────────────────────────────────────────
+  // ── Gastos por categoría ────────────────────────────────────────────────────
   const spendByType: Record<string, number> = {};
-
-  maintenances?.forEach((m) => {
-    const typeLabels: Record<string, string> = {
-      aceite: "Aceite", frenos: "Frenos", neumaticos: "Neumáticos",
-      filtros: "Filtros", suspension: "Suspensión", electrico: "Eléctrico",
-      general: "General", otro: "Otro",
-    };
-    const label = typeLabels[m.type] ?? m.type;
-    spendByType[label] = (spendByType[label] ?? 0) + m.total_cost;
-  });
-
+  const typeLabels: Record<string, string> = {
+    aceite: "Aceite", frenos: "Frenos", neumaticos: "Neumáticos",
+    filtros: "Filtros", suspension: "Suspensión", electrico: "Eléctrico",
+    general: "General", otro: "Otro",
+  };
   const docTypeLabels: Record<string, string> = {
     revision_tecnica: "Rev. Técnica", soap: "SOAP",
     permiso_circulacion: "Permiso Circ.", seguro: "Seguro",
     licencia_operador: "Lic. Operador", otro: "Doc. Otro",
   };
+
+  maintenances?.forEach((m) => {
+    if (new Date(m.date).getFullYear() !== selectedYear) return;
+    const label = typeLabels[m.type] ?? m.type;
+    spendByType[label] = (spendByType[label] ?? 0) + m.total_cost;
+  });
+
   documents?.forEach((d) => {
     if (!d.amount_paid) return;
+    const refDate = d.issue_date ? new Date(d.issue_date) : null;
+    if (!refDate || refDate.getFullYear() !== selectedYear) return;
     const label = docTypeLabels[d.type] ?? d.type;
     spendByType[label] = (spendByType[label] ?? 0) + d.amount_paid;
   });
@@ -67,10 +76,11 @@ export default async function ReportsPage() {
     .map(([name, total]) => ({ name, total }))
     .sort((a, b) => b.total - a.total);
 
-  // ── Top vehículos (mantenciones + documentos) ────────────────────────────
+  // ── Top vehículos ────────────────────────────────────────────────────────────
   const spendByVehicle: Record<string, { name: string; mantenciones: number; documentos: number }> = {};
 
   maintenances?.forEach((m) => {
+    if (new Date(m.date).getFullYear() !== selectedYear) return;
     const v = m.vehicle as { plate: string; brand: string; model: string };
     if (!v) return;
     if (!spendByVehicle[m.vehicle_id]) {
@@ -81,6 +91,8 @@ export default async function ReportsPage() {
 
   documents?.forEach((d) => {
     if (!d.amount_paid) return;
+    const refDate = d.issue_date ? new Date(d.issue_date) : null;
+    if (!refDate || refDate.getFullYear() !== selectedYear) return;
     const v = d.vehicle as { plate: string; brand: string; model: string };
     if (!v) return;
     if (!spendByVehicle[d.vehicle_id]) {
@@ -94,39 +106,78 @@ export default async function ReportsPage() {
     .sort((a, b) => b.total - a.total)
     .slice(0, 5);
 
-  // ── Totales generales ────────────────────────────────────────────────────
+  // ── Totales ───────────────────────────────────────────────────────────────────
   const maintenanceYearSpend = maintenances
-    ?.filter((m) => new Date(m.date).getFullYear() === currentYear)
+    ?.filter((m) => new Date(m.date).getFullYear() === selectedYear)
     .reduce((sum, m) => sum + m.total_cost, 0) ?? 0;
 
   const docYearSpend = documents
     ?.filter((d) => {
       const refDate = d.issue_date ? new Date(d.issue_date) : null;
-      return refDate && refDate.getFullYear() === currentYear && d.amount_paid;
+      return refDate && refDate.getFullYear() === selectedYear && d.amount_paid;
     })
     .reduce((sum, d) => sum + (d.amount_paid ?? 0), 0) ?? 0;
 
   const totalYearSpend = maintenanceYearSpend + docYearSpend;
-
   const totalAllTimeSpend =
     (maintenances?.reduce((sum, m) => sum + m.total_cost, 0) ?? 0) +
     (documents?.reduce((sum, d) => sum + (d.amount_paid ?? 0), 0) ?? 0);
 
   const expiredDocs = documents?.filter((d) => new Date(d.expiry_date) < new Date()).length ?? 0;
 
+  // Datos para exportar CSV
+  const exportMaintenances = (maintenances ?? [])
+    .filter((m) => new Date(m.date).getFullYear() === selectedYear)
+    .map((m) => {
+      const v = m.vehicle as { plate: string; brand: string; model: string } | null;
+      return {
+        tipo: typeLabels[m.type] ?? m.type,
+        vehiculo: v ? `${v.brand} ${v.model}` : "",
+        patente: v?.plate ?? "",
+        taller: m.workshop_name ?? "",
+        fecha: m.date,
+        km: m.km_at_service,
+        costo: m.total_cost,
+      };
+    });
+
   return (
     <div className="space-y-6">
-      <div>
-        <h2 className="text-2xl font-bold text-gray-900">Reportes</h2>
-        <p className="text-gray-500 text-sm mt-1">Incluye mantenciones y gastos en documentos</p>
+      <div className="flex items-center justify-between flex-wrap gap-3">
+        <div>
+          <h2 className="text-2xl font-bold text-gray-900">Reportes</h2>
+          <p className="text-gray-500 text-sm mt-1">Incluye mantenciones y gastos en documentos</p>
+        </div>
+        {/* Selector de año */}
+        <div className="flex items-center gap-2">
+          <Link
+            href={`/dashboard/reportes?year=${prevYear}`}
+            className="p-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition text-gray-600"
+          >
+            <ChevronLeft className="w-4 h-4" />
+          </Link>
+          <span className="text-lg font-bold text-gray-800 min-w-[4rem] text-center">{selectedYear}</span>
+          {selectedYear < currentYear && (
+            <Link
+              href={`/dashboard/reportes?year=${nextYear}`}
+              className="p-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition text-gray-600"
+            >
+              <ChevronRight className="w-4 h-4" />
+            </Link>
+          )}
+          {selectedYear === currentYear && (
+            <span className="p-2 text-gray-300"><ChevronRight className="w-4 h-4" /></span>
+          )}
+          <ReportExport maintenances={exportMaintenances} year={selectedYear} />
+        </div>
       </div>
 
       {/* Stats rápidas */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {[
-          { label: `Gasto Total ${currentYear}`, value: formatCurrency(totalYearSpend), icon: TrendingUp, color: "bg-blue-500" },
+          { label: `Gasto Total ${selectedYear}`, value: formatCurrency(totalYearSpend), icon: TrendingUp, color: "bg-blue-500" },
           { label: "Gasto Total Historial", value: formatCurrency(totalAllTimeSpend), icon: DollarSign, color: "bg-construserv-orange" },
-          { label: `Mantenciones ${currentYear}`, value: formatCurrency(maintenanceYearSpend), icon: Wrench, color: "bg-green-500" },
+          { label: `Mantenciones ${selectedYear}`, value: formatCurrency(maintenanceYearSpend), icon: Wrench, color: "bg-green-500" },
           { label: "Docs. Vencidos", value: expiredDocs, icon: FileWarning, color: expiredDocs > 0 ? "bg-red-500" : "bg-gray-400" },
         ].map(({ label, value, icon: Icon, color }) => (
           <div key={label} className="bg-white rounded-xl border border-gray-100 shadow-sm p-5">
@@ -143,9 +194,9 @@ export default async function ReportsPage() {
         ))}
       </div>
 
-      {/* Desglose año actual */}
+      {/* Desglose año seleccionado */}
       <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5">
-        <h3 className="font-semibold text-gray-800 mb-3">Desglose {currentYear}</h3>
+        <h3 className="font-semibold text-gray-800 mb-3">Desglose {selectedYear}</h3>
         <div className="grid grid-cols-2 gap-4">
           <div className="bg-orange-50 rounded-lg p-4">
             <p className="text-xs text-orange-600 font-medium">Mantenciones</p>
@@ -164,12 +215,12 @@ export default async function ReportsPage() {
       {/* Top vehículos */}
       <div className="bg-white rounded-xl border border-gray-100 shadow-sm">
         <div className="p-5 border-b border-gray-100">
-          <h3 className="font-semibold text-gray-800">Top Vehículos por Gasto Total</h3>
+          <h3 className="font-semibold text-gray-800">Top Vehículos por Gasto — {selectedYear}</h3>
           <p className="text-xs text-gray-400 mt-0.5">Incluye mantenciones + documentos</p>
         </div>
         <div className="divide-y divide-gray-50">
           {topVehicles.length === 0 ? (
-            <p className="p-5 text-gray-400 text-sm text-center">Sin datos aún</p>
+            <p className="p-5 text-gray-400 text-sm text-center">Sin datos para {selectedYear}</p>
           ) : (
             topVehicles.map((v, i) => (
               <div key={i} className="px-5 py-3 flex items-center justify-between">
