@@ -328,7 +328,7 @@ export default async function VehicleDetailPage({
             <p className="p-5 text-gray-400 text-sm text-center">Sin inspecciones registradas</p>
           ) : (
             inspections.map((insp) => {
-              const items = (insp.items ?? []) as { label: string; status: string; note?: string }[];
+              const items = (insp.items ?? []) as { label: string; status: string; note?: string; photos?: string[] }[];
               const fails = items.filter((it) => it.status === "fail");
               return (
                 <div key={insp.id} className="px-5 py-3">
@@ -342,10 +342,26 @@ export default async function VehicleDetailPage({
                     </span>
                   </div>
                   {fails.length > 0 && (
-                    <p className="text-xs text-gray-500 mt-1">
-                      {fails.map((f) => f.label.split(" (")[0]).join(", ")}
-                    </p>
+                    <div className="mt-2 space-y-2">
+                      {fails.map((f, fi) => (
+                        <div key={fi} className="bg-red-50 border border-red-100 rounded-lg px-3 py-2">
+                          <p className="text-xs font-medium text-red-700">{f.label.split(" (")[0]}</p>
+                          {f.note && <p className="text-xs text-gray-600 mt-0.5">{f.note}</p>}
+                          {f.photos && f.photos.length > 0 && (
+                            <div className="flex flex-wrap gap-1.5 mt-1.5">
+                              {f.photos.map((u, pi) => (
+                                <a key={pi} href={u} target="_blank" rel="noopener noreferrer">
+                                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                                  <img src={u} alt="" className="w-12 h-12 object-cover rounded border border-red-200 hover:opacity-90 transition" />
+                                </a>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
                   )}
+                  {insp.notes && <p className="text-xs text-gray-400 mt-1.5 italic">{insp.notes}</p>}
                 </div>
               );
             })
