@@ -56,6 +56,8 @@ export default function PerfilPage() {
         .select("id, driver_name, vehicle:vehicles(id, plate, brand, model)")
         .eq("profile_id", user.id)
         .is("end_date", null)
+        .order("start_date", { ascending: false })
+        .limit(1)
         .maybeSingle();
 
       if (cancelled) return;

@@ -44,6 +44,8 @@ export default async function DashboardLayout({
     .select("driver_name, vehicle:vehicles(id, brand, model, plate, current_km)")
     .eq("profile_id", user.id)
     .is("end_date", null)
+    .order("start_date", { ascending: false })
+    .limit(1)
     .maybeSingle();
 
   if (assignment?.vehicle) {

@@ -1,7 +1,9 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import KmRegisterForm from "./KmRegisterForm";
+import { createClient } from "@/lib/supabase/client";
 import { Gauge } from "lucide-react";
 
 interface Props {
@@ -17,6 +19,14 @@ interface Props {
  */
 export default function KmCheckInGate({ vehicleId, vehicleLabel, lastKm, driverName }: Props) {
   const [open, setOpen] = useState(true);
+  const router = useRouter();
+
+  async function handleLogout() {
+    const supabase = createClient();
+    await supabase.auth.signOut();
+    router.push("/login");
+    router.refresh();
+  }
 
   if (!open) return null;
 
@@ -41,6 +51,15 @@ export default function KmCheckInGate({ vehicleId, vehicleLabel, lastKm, driverN
           variant="large"
           onSuccess={() => setTimeout(() => setOpen(false), 1500)}
         />
+
+        <div className="text-center mt-5 pt-4 border-t border-gray-100">
+          <button
+            onClick={handleLogout}
+            className="text-xs text-gray-400 hover:text-gray-600 transition"
+          >
+            ¿Problemas? Cerrar sesión
+          </button>
+        </div>
       </div>
     </div>
   );
