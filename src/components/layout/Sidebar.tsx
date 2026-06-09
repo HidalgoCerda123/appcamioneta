@@ -15,6 +15,8 @@ import {
   HardHat,
   ShieldCheck,
   Gauge,
+  AlertTriangle,
+  ClipboardCheck,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/client";
@@ -26,7 +28,9 @@ const navItems = [
   { href: "/dashboard/vehiculos", label: "Vehículos", icon: Truck },
   { href: "/dashboard/conductores", label: "Conductores", icon: HardHat },
   { href: "/dashboard/mantenciones", label: "Mantenciones", icon: Wrench },
+  { href: "/dashboard/fallas", label: "Fallas", icon: AlertTriangle },
   { href: "/dashboard/documentos", label: "Documentos", icon: FileText },
+  { href: "/dashboard/inspeccion", label: "Inspección", icon: ClipboardCheck },
   { href: "/dashboard/registrar-km", label: "Registrar Km", icon: Gauge },
   { href: "/dashboard/notificaciones", label: "Notificaciones", icon: Bell },
   { href: "/dashboard/reportes", label: "Reportes", icon: BarChart3 },

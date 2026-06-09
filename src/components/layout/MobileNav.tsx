@@ -16,6 +16,9 @@ import {
   Settings,
   LogOut,
   ShieldCheck,
+  AlertTriangle,
+  Gauge,
+  ClipboardCheck,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useState } from "react";
@@ -31,6 +34,9 @@ const mainItems = [
 ];
 
 const moreItems = [
+  { href: "/dashboard/registrar-km", label: "Registrar Km", icon: Gauge },
+  { href: "/dashboard/inspeccion", label: "Inspección", icon: ClipboardCheck },
+  { href: "/dashboard/fallas", label: "Fallas", icon: AlertTriangle },
   { href: "/dashboard/conductores", label: "Conductores", icon: HardHat },
   { href: "/dashboard/notificaciones", label: "Notificaciones", icon: Bell },
   { href: "/dashboard/reportes", label: "Reportes", icon: BarChart3 },

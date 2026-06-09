@@ -1,7 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, Truck, Gauge, Wrench, FileText, Pencil, Clock } from "lucide-react";
+import { ArrowLeft, Truck, Gauge, Wrench, FileText, Pencil, Clock, ClipboardCheck } from "lucide-react";
 import DeleteButton from "@/components/ui/DeleteButton";
 import { formatCurrency, formatDate, formatUsage, getDaysUntil, getAlertColor } from "@/lib/utils";
 import DriverSection from "@/components/vehicles/DriverSection";
@@ -51,7 +51,7 @@ export default async function VehicleDetailPage({
   const { id } = await params;
   const supabase = await createClient();
 
-  const [{ data: vehicle }, { data: maintenances }, { data: documents }, { data: drivers }, { data: kmReadings }, { data: plans }, { data: { user } }] = await Promise.all([
+  const [{ data: vehicle }, { data: maintenances }, { data: documents }, { data: drivers }, { data: kmReadings }, { data: plans }, { data: { user } }, { data: inspections }] = await Promise.all([
     supabase.from("vehicles").select("*").eq("id", id).single(),
     supabase.from("maintenances").select("*").eq("vehicle_id", id).order("date", { ascending: false }),
     supabase.from("vehicle_documents").select("*").eq("vehicle_id", id).order("expiry_date", { ascending: true }),
@@ -59,6 +59,7 @@ export default async function VehicleDetailPage({
     supabase.from("odometer_readings").select("id, km, reading_date, source, driver_name").eq("vehicle_id", id).order("reading_date", { ascending: false }).order("created_at", { ascending: false }),
     supabase.from("maintenance_plans").select("*").eq("vehicle_id", id).order("created_at", { ascending: true }),
     supabase.auth.getUser(),
+    supabase.from("inspections").select("id, inspection_date, driver_name, has_issues, items, notes").eq("vehicle_id", id).order("inspection_date", { ascending: false }).limit(10),
   ]);
 
   let canEditPlans = false;
@@ -313,6 +314,42 @@ export default async function VehicleDetailPage({
               ))
             )}
           </div>
+        </div>
+      </div>
+
+      {/* Inspecciones recientes */}
+      <div className="bg-white rounded-xl border border-gray-100 shadow-sm">
+        <div className="p-5 border-b border-gray-100 flex items-center gap-2">
+          <ClipboardCheck className="w-4 h-4 text-construserv-orange" />
+          <h3 className="font-semibold text-gray-800">Inspecciones Pre-Uso Recientes</h3>
+        </div>
+        <div className="divide-y divide-gray-50">
+          {!inspections || inspections.length === 0 ? (
+            <p className="p-5 text-gray-400 text-sm text-center">Sin inspecciones registradas</p>
+          ) : (
+            inspections.map((insp) => {
+              const items = (insp.items ?? []) as { label: string; status: string; note?: string }[];
+              const fails = items.filter((it) => it.status === "fail");
+              return (
+                <div key={insp.id} className="px-5 py-3">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium text-gray-800">{formatDate(insp.inspection_date)}</p>
+                      {insp.driver_name && <p className="text-xs text-gray-400">{insp.driver_name}</p>}
+                    </div>
+                    <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${insp.has_issues ? "bg-yellow-100 text-yellow-700" : "bg-green-100 text-green-700"}`}>
+                      {insp.has_issues ? `${fails.length} problema(s)` : "Sin problemas"}
+                    </span>
+                  </div>
+                  {fails.length > 0 && (
+                    <p className="text-xs text-gray-500 mt-1">
+                      {fails.map((f) => f.label.split(" (")[0]).join(", ")}
+                    </p>
+                  )}
+                </div>
+              );
+            })
+          )}
         </div>
       </div>
     </div>

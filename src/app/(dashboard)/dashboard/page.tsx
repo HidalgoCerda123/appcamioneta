@@ -140,6 +140,19 @@ export default async function DashboardPage() {
     preventiveDue.sort((a, b) => (a.level === b.level ? 0 : a.level === "overdue" ? -1 : 1));
   }
 
+  // Fallas abiertas — solo para admin / editor
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let openFaults: any[] = [];
+  if (isManager) {
+    const { data } = await supabase
+      .from("fault_reports")
+      .select("id, title, severity, status, created_at, vehicle:vehicles(id, brand, model, plate)")
+      .neq("status", "resuelta")
+      .order("created_at", { ascending: false })
+      .limit(8);
+    openFaults = data ?? [];
+  }
+
   const stats = [
     { label: "Total Vehículos", value: totalVehicles ?? 0, icon: Truck, color: "bg-blue-500", href: "/dashboard/vehiculos" },
     { label: "Vehículos Activos", value: activeVehicles ?? 0, icon: CheckCircle, color: "bg-green-500", href: "/dashboard/vehiculos?status=activo" },
@@ -243,6 +256,39 @@ export default async function DashboardPage() {
                     "bg-green-100 text-green-700"
                   }`}>
                     {label}
+                  </span>
+                </Link>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Fallas abiertas (admin/editor) */}
+      {isManager && openFaults.length > 0 && (
+        <div className="bg-white rounded-xl border border-red-100 shadow-sm">
+          <div className="p-5 border-b border-red-100 flex items-center justify-between">
+            <h3 className="font-semibold text-gray-800 flex items-center gap-2">
+              <AlertTriangle className="w-4 h-4 text-red-500" />
+              Fallas Reportadas
+            </h3>
+            <Link href="/dashboard/fallas" className="text-construserv-orange text-sm hover:underline">Ver todas</Link>
+          </div>
+          <div className="divide-y divide-gray-50">
+            {openFaults.map((f) => {
+              const veh = f.vehicle as { id: string; brand: string; model: string; plate: string } | null;
+              return (
+                <Link key={f.id} href="/dashboard/fallas" className="px-5 py-3 flex items-center justify-between hover:bg-gray-50 transition">
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium text-gray-800 truncate">{f.title}</p>
+                    <p className="text-xs text-gray-500">{veh ? `${veh.brand} ${veh.model} (${veh.plate})` : "—"} · {formatDate(f.created_at)}</p>
+                  </div>
+                  <span className={`text-xs font-semibold px-2.5 py-1 rounded-full flex-shrink-0 ${
+                    f.severity === "alta" ? "bg-red-100 text-red-700" :
+                    f.severity === "media" ? "bg-yellow-100 text-yellow-700" :
+                    "bg-gray-100 text-gray-600"
+                  }`}>
+                    {f.severity === "alta" ? "Alta" : f.severity === "media" ? "Media" : "Baja"}
                   </span>
                 </Link>
               );
