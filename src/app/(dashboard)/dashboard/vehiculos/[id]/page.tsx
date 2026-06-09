@@ -62,6 +62,17 @@ export default async function VehicleDetailPage({
     supabase.from("inspections").select("id, inspection_date, driver_name, has_issues, items, notes").eq("vehicle_id", id).order("inspection_date", { ascending: false }).limit(10),
   ]);
 
+  // Obra actual del vehículo
+  const { data: projAssign } = await supabase
+    .from("project_vehicles")
+    .select("project:projects(id, name)")
+    .eq("vehicle_id", id)
+    .is("end_date", null)
+    .order("start_date", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  const currentProject = (projAssign?.project as unknown as { id: string; name: string } | null) ?? null;
+
   let canEditPlans = false;
   if (user) {
     const { data: prof } = await supabase.from("profiles").select("role").eq("id", user.id).single();
@@ -199,6 +210,14 @@ export default async function VehicleDetailPage({
               <div>
                 <p className="text-xs text-gray-400 uppercase tracking-wide">Costo por {unitShort}</p>
                 <p className="font-semibold text-gray-800 mt-0.5">{formatCurrency(costPerUsage)}/{unitShort}</p>
+              </div>
+            )}
+            {currentProject && (
+              <div>
+                <p className="text-xs text-gray-400 uppercase tracking-wide">Obra actual</p>
+                <Link href={`/dashboard/obras/${currentProject.id}`} className="font-semibold text-construserv-orange mt-0.5 block hover:underline">
+                  {currentProject.name}
+                </Link>
               </div>
             )}
           </div>

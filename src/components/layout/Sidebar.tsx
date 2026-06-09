@@ -17,6 +17,7 @@ import {
   Gauge,
   AlertTriangle,
   ClipboardCheck,
+  Building2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/client";
@@ -26,6 +27,7 @@ import type { Profile } from "@/types";
 const navItems = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/dashboard/vehiculos", label: "Vehículos", icon: Truck },
+  { href: "/dashboard/obras", label: "Obras", icon: Building2 },
   { href: "/dashboard/conductores", label: "Conductores", icon: HardHat },
   { href: "/dashboard/mantenciones", label: "Mantenciones", icon: Wrench },
   { href: "/dashboard/fallas", label: "Fallas", icon: AlertTriangle },

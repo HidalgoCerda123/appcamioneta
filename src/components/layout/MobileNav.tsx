@@ -19,6 +19,7 @@ import {
   AlertTriangle,
   Gauge,
   ClipboardCheck,
+  Building2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useState } from "react";
@@ -34,6 +35,7 @@ const mainItems = [
 ];
 
 const moreItems = [
+  { href: "/dashboard/obras", label: "Obras", icon: Building2 },
   { href: "/dashboard/registrar-km", label: "Registrar Km", icon: Gauge },
   { href: "/dashboard/inspeccion", label: "Inspección", icon: ClipboardCheck },
   { href: "/dashboard/fallas", label: "Fallas", icon: AlertTriangle },
