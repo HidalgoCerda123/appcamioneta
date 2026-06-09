@@ -32,6 +32,14 @@ export default async function MaintenanceDetailPage({
 
   if (!m) notFound();
 
+  const { data: { user } } = await supabase.auth.getUser();
+  let canEdit = false, isAdmin = false;
+  if (user) {
+    const { data: prof } = await supabase.from("profiles").select("role").eq("id", user.id).single();
+    canEdit = prof?.role === "admin" || prof?.role === "editor";
+    isAdmin = prof?.role === "admin";
+  }
+
   const vehicle = m.vehicle as { id: string; plate: string; brand: string; model: string };
   const parts = (m.parts_replaced as { name: string; brand?: string; part_number?: string; quantity: number; unit_cost: number; warranty_months?: number }[]) ?? [];
 
@@ -48,19 +56,23 @@ export default async function MaintenanceDetailPage({
           <p className="text-gray-500 text-sm">{vehicle?.brand} {vehicle?.model} — {vehicle?.plate}</p>
         </div>
         <div className="flex items-center gap-2">
-          <Link
-            href={`/dashboard/mantenciones/${id}/editar`}
-            className="flex items-center gap-2 border border-gray-300 text-gray-700 px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-50 transition"
-          >
-            <Pencil className="w-4 h-4" />
-            Editar
-          </Link>
-          <DeleteButton
-            table="maintenances"
-            id={id}
-            redirectTo="/dashboard/mantenciones"
-            confirmText="Se eliminará esta mantención permanentemente."
-          />
+          {canEdit && (
+            <Link
+              href={`/dashboard/mantenciones/${id}/editar`}
+              className="flex items-center gap-2 border border-gray-300 text-gray-700 px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-50 transition"
+            >
+              <Pencil className="w-4 h-4" />
+              Editar
+            </Link>
+          )}
+          {isAdmin && (
+            <DeleteButton
+              table="maintenances"
+              id={id}
+              redirectTo="/dashboard/mantenciones"
+              confirmText="Se eliminará esta mantención permanentemente."
+            />
+          )}
         </div>
       </div>
 

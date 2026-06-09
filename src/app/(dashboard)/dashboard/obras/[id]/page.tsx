@@ -28,9 +28,11 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
   if (!project) notFound();
 
   let canEdit = false;
+  let isAdmin = false;
   if (user) {
     const { data: prof } = await supabase.from("profiles").select("role").eq("id", user.id).single();
     canEdit = prof?.role === "admin" || prof?.role === "editor";
+    isAdmin = prof?.role === "admin";
   }
 
   const today = new Date().toISOString().split("T")[0];
@@ -93,7 +95,9 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
             <Link href={`/dashboard/obras/${id}/editar`} className="flex items-center gap-2 border border-gray-300 text-gray-700 px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-50 transition">
               <Pencil className="w-4 h-4" /> Editar
             </Link>
-            <DeleteButton table="projects" id={id} redirectTo="/dashboard/obras" confirmText="Se eliminará esta obra y sus asignaciones de vehículos." />
+            {isAdmin && (
+              <DeleteButton table="projects" id={id} redirectTo="/dashboard/obras" confirmText="Se eliminará esta obra y sus asignaciones de vehículos." />
+            )}
           </div>
         )}
       </div>

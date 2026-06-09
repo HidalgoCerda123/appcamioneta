@@ -49,6 +49,14 @@ export default async function DocumentDetailPage({
 
   if (!doc) notFound();
 
+  const { data: { user } } = await supabase.auth.getUser();
+  let canEdit = false, isAdmin = false;
+  if (user) {
+    const { data: prof } = await supabase.from("profiles").select("role").eq("id", user.id).single();
+    canEdit = prof?.role === "admin" || prof?.role === "editor";
+    isAdmin = prof?.role === "admin";
+  }
+
   const vehicle = doc.vehicle as { id: string; plate: string; brand: string; model: string };
   const days = getDaysUntil(doc.expiry_date);
   const color = getAlertColor(days);
@@ -65,19 +73,23 @@ export default async function DocumentDetailPage({
           <p className="text-gray-500 text-sm">{vehicle?.brand} {vehicle?.model} — {vehicle?.plate}</p>
         </div>
         <div className="flex items-center gap-2">
-          <Link
-            href={`/dashboard/documentos/${id}/editar`}
-            className="flex items-center gap-2 border border-gray-300 text-gray-700 px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-50 transition"
-          >
-            <Pencil className="w-4 h-4" />
-            Editar
-          </Link>
-          <DeleteButton
-            table="vehicle_documents"
-            id={id}
-            redirectTo="/dashboard/documentos"
-            confirmText="Se eliminará este documento permanentemente."
-          />
+          {canEdit && (
+            <Link
+              href={`/dashboard/documentos/${id}/editar`}
+              className="flex items-center gap-2 border border-gray-300 text-gray-700 px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-50 transition"
+            >
+              <Pencil className="w-4 h-4" />
+              Editar
+            </Link>
+          )}
+          {isAdmin && (
+            <DeleteButton
+              table="vehicle_documents"
+              id={id}
+              redirectTo="/dashboard/documentos"
+              confirmText="Se eliminará este documento permanentemente."
+            />
+          )}
         </div>
       </div>
 

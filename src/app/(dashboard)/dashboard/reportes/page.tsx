@@ -20,11 +20,11 @@ export default async function ReportsPage({
   const prevYear = selectedYear - 1;
   const nextYear = selectedYear + 1;
 
-  const [{ data: maintenances }, { data: documents }, { data: allVehicles }, { data: allReadings }] = await Promise.all([
+  const [{ data: maintenances }, { data: documents }, { data: allVehicles }, { data: spans }] = await Promise.all([
     supabase.from("maintenances").select("*, vehicle:vehicles(plate, brand, model, type)").order("date"),
     supabase.from("vehicle_documents").select("*, vehicle:vehicles(plate, brand, model)").order("issue_date"),
     supabase.from("vehicles").select("id, brand, model, plate, current_km, usage_unit"),
-    supabase.from("odometer_readings").select("vehicle_id, km"),
+    supabase.from("odometer_span").select("vehicle_id, min_km, max_km"),
   ]);
 
   // ── Gastos por mes ──────────────────────────────────────────────────────────
@@ -135,10 +135,8 @@ export default async function ReportsPage({
   documents?.forEach((d) => { if (d.amount_paid) spendAllByVehicle[d.vehicle_id] = (spendAllByVehicle[d.vehicle_id] ?? 0) + d.amount_paid; });
 
   const usageRange: Record<string, { min: number; max: number }> = {};
-  (allReadings ?? []).forEach((r) => {
-    const cur = usageRange[r.vehicle_id];
-    if (!cur) usageRange[r.vehicle_id] = { min: r.km, max: r.km };
-    else { if (r.km < cur.min) cur.min = r.km; if (r.km > cur.max) cur.max = r.km; }
+  (spans ?? []).forEach((r) => {
+    usageRange[r.vehicle_id] = { min: r.min_km ?? 0, max: r.max_km ?? 0 };
   });
 
   const costPerUsage = (allVehicles ?? [])

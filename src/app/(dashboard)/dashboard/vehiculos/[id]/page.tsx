@@ -74,9 +74,11 @@ export default async function VehicleDetailPage({
   const currentProject = (projAssign?.project as unknown as { id: string; name: string } | null) ?? null;
 
   let canEditPlans = false;
+  let isAdmin = false;
   if (user) {
     const { data: prof } = await supabase.from("profiles").select("role").eq("id", user.id).single();
     canEditPlans = prof?.role === "admin" || prof?.role === "editor";
+    isAdmin = prof?.role === "admin";
   }
 
   // Próxima mantención programada (la más reciente con next_service_date o next_service_km)
@@ -115,19 +117,23 @@ export default async function VehicleDetailPage({
           <p className="text-gray-500 text-sm">{vehicle.plate} — {vehicle.year}</p>
         </div>
         <div className="flex items-center gap-2">
-          <Link
-            href={`/dashboard/vehiculos/${id}/editar`}
-            className="flex items-center gap-2 border border-gray-300 text-gray-700 px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-50 transition"
-          >
-            <Pencil className="w-4 h-4" />
-            Editar
-          </Link>
-          <DeleteButton
-            table="vehicles"
-            id={id}
-            redirectTo="/dashboard/vehiculos"
-            confirmText="Se eliminará este vehículo y todos sus datos asociados permanentemente."
-          />
+          {canEditPlans && (
+            <Link
+              href={`/dashboard/vehiculos/${id}/editar`}
+              className="flex items-center gap-2 border border-gray-300 text-gray-700 px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-50 transition"
+            >
+              <Pencil className="w-4 h-4" />
+              Editar
+            </Link>
+          )}
+          {isAdmin && (
+            <DeleteButton
+              table="vehicles"
+              id={id}
+              redirectTo="/dashboard/vehiculos"
+              confirmText="Se eliminará este vehículo y todos sus datos asociados permanentemente."
+            />
+          )}
         </div>
       </div>
 

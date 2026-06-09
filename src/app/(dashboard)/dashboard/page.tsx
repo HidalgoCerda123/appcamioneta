@@ -60,21 +60,18 @@ export default async function DashboardPage() {
 
   let kmCompliance: { driver: string; vehicleId: string; vehicle: string; days: number | null }[] = [];
   if (isManager) {
-    const [{ data: linkedForKm }, { data: readings }] = await Promise.all([
+    const [{ data: linkedForKm }, { data: spans }] = await Promise.all([
       supabase
         .from("vehicle_drivers")
         .select("driver_name, vehicle:vehicles(id, brand, model, plate)")
         .is("end_date", null)
         .not("profile_id", "is", null),
-      supabase
-        .from("odometer_readings")
-        .select("vehicle_id, reading_date")
-        .order("reading_date", { ascending: false }),
+      supabase.from("odometer_span").select("vehicle_id, last_date"),
     ]);
 
     const latestByVehicle: Record<string, string> = {};
-    for (const r of readings ?? []) {
-      if (!latestByVehicle[r.vehicle_id]) latestByVehicle[r.vehicle_id] = r.reading_date;
+    for (const r of spans ?? []) {
+      if (r.last_date) latestByVehicle[r.vehicle_id] = r.last_date;
     }
 
     kmCompliance = (linkedForKm ?? [])
