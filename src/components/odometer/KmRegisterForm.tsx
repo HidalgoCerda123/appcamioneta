@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { Gauge, Check, Loader2 } from "lucide-react";
 import { todaySantiago } from "@/lib/date";
+import { enqueue } from "@/lib/offlineQueue";
 
 interface Props {
   vehicleId: string;
@@ -54,14 +55,26 @@ export default function KmRegisterForm({
     setSaving(true);
     const { data: { user } } = await supabase.auth.getUser();
 
-    const { error: insErr } = await supabase.from("odometer_readings").insert({
+    const today = todaySantiago();
+    const payload = {
       vehicle_id: vehicleId,
       km: value,
-      reading_date: todaySantiago(),
+      reading_date: today,
       source: "manual",
       recorded_by: user?.id ?? null,
       driver_name: driverName ?? null,
-    });
+    };
+
+    // Sin conexión: guardar en cola y reintentar al recuperar señal
+    if (typeof navigator !== "undefined" && !navigator.onLine) {
+      enqueue({ action: "odometer", payload, dedupe: `odo-${vehicleId}-${today}` });
+      setSaving(false);
+      setDone(true);
+      if (onSuccess) onSuccess();
+      return;
+    }
+
+    const { error: insErr } = await supabase.from("odometer_readings").insert(payload);
 
     if (insErr) {
       setError(insErr.message);

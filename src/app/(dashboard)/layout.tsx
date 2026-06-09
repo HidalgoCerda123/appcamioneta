@@ -4,6 +4,7 @@ import Sidebar from "@/components/layout/Sidebar";
 import Header from "@/components/layout/Header";
 import MobileNav from "@/components/layout/MobileNav";
 import KmCheckInGate from "@/components/odometer/KmCheckInGate";
+import PwaProvider from "@/components/pwa/PwaProvider";
 import { todaySantiago } from "@/lib/date";
 
 export default async function DashboardLayout({
@@ -80,6 +81,7 @@ export default async function DashboardLayout({
         </main>
       </div>
       <MobileNav profile={profile} />
+      <PwaProvider />
       {kmCheckIn && (
         <KmCheckInGate
           vehicleId={kmCheckIn.vehicleId}
