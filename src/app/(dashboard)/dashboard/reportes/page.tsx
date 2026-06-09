@@ -2,7 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { formatCurrency } from "@/lib/utils";
 import ReportCharts from "@/components/reports/ReportCharts";
 import ReportExport from "@/components/reports/ReportExport";
-import { TrendingUp, DollarSign, Wrench, FileWarning, ChevronLeft, ChevronRight } from "lucide-react";
+import { TrendingUp, DollarSign, Wrench, FileWarning, ChevronLeft, ChevronRight, FileText } from "lucide-react";
 import Link from "next/link";
 
 export const metadata = { title: 'Reportes' };
@@ -203,6 +203,10 @@ export default async function ReportsPage({
             <span className="p-2 text-gray-300"><ChevronRight className="w-4 h-4" /></span>
           )}
           <ReportExport maintenances={exportMaintenances} year={selectedYear} />
+          <Link href="/dashboard/reportes/mensual" className="flex items-center gap-2 bg-construserv-orange text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-orange-600 transition">
+            <FileText className="w-4 h-4" />
+            Informe mensual PDF
+          </Link>
         </div>
       </div>
 

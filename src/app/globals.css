@@ -105,3 +105,27 @@
 
 /* Table header */
 .dark thead { background-color: #0f172a; }
+
+/* Impresión: ocultar navegación y mostrar solo el informe */
+@media print {
+  aside,
+  header,
+  .mobile-nav,
+  .no-print {
+    display: none !important;
+  }
+  main {
+    padding: 0 !important;
+    overflow: visible !important;
+  }
+  body {
+    background: white !important;
+  }
+  .print-area {
+    box-shadow: none !important;
+    border: none !important;
+  }
+  @page {
+    margin: 1.5cm;
+  }
+}
