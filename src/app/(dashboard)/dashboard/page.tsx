@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
-import { Truck, Wrench, FileWarning, AlertTriangle, CheckCircle, UserCheck, XCircle } from "lucide-react";
+import { Truck, Wrench, FileWarning, AlertTriangle, CheckCircle, UserCheck, XCircle, Gauge } from "lucide-react";
 import { formatCurrency, formatDate, getDaysUntil, getAlertColor } from "@/lib/utils";
+import { daysSince } from "@/lib/date";
 import Link from "next/link";
 import type { VehicleDocument } from "@/types";
 
@@ -42,6 +43,49 @@ export default async function DashboardPage() {
   const nextServices = nextServicesResult.status === "fulfilled" ? nextServicesResult.value.data : [];
 
   const alertTotal = (expiredDocs?.length ?? 0) + (expiringDocs?.length ?? 0);
+
+  // Cumplimiento de kilometraje — solo para admin / editor
+  const { data: { user } } = await supabase.auth.getUser();
+  let isManager = false;
+  if (user) {
+    const { data: prof } = await supabase.from("profiles").select("role").eq("id", user.id).single();
+    isManager = prof?.role === "admin" || prof?.role === "editor";
+  }
+
+  let kmCompliance: { driver: string; vehicleId: string; vehicle: string; days: number | null }[] = [];
+  if (isManager) {
+    const [{ data: linkedForKm }, { data: readings }] = await Promise.all([
+      supabase
+        .from("vehicle_drivers")
+        .select("driver_name, vehicle:vehicles(id, brand, model, plate)")
+        .is("end_date", null)
+        .not("profile_id", "is", null),
+      supabase
+        .from("odometer_readings")
+        .select("vehicle_id, reading_date")
+        .order("reading_date", { ascending: false }),
+    ]);
+
+    const latestByVehicle: Record<string, string> = {};
+    for (const r of readings ?? []) {
+      if (!latestByVehicle[r.vehicle_id]) latestByVehicle[r.vehicle_id] = r.reading_date;
+    }
+
+    kmCompliance = (linkedForKm ?? [])
+      .map((ld) => {
+        const v = ld.vehicle as unknown as { id: string; brand: string; model: string; plate: string };
+        const last = latestByVehicle[v.id];
+        return {
+          driver: ld.driver_name,
+          vehicleId: v.id,
+          vehicle: `${v.brand} ${v.model} (${v.plate})`,
+          days: last ? daysSince(last) : null,
+        };
+      })
+      .sort((a, b) => (b.days ?? 99999) - (a.days ?? 99999));
+  }
+
+  const kmAtrasados = kmCompliance.filter((k) => k.days === null || k.days >= 7).length;
 
   const stats = [
     { label: "Total Vehículos", value: totalVehicles ?? 0, icon: Truck, color: "bg-blue-500", href: "/dashboard/vehiculos" },
@@ -102,6 +146,57 @@ export default async function DashboardPage() {
           </Link>
         ))}
       </div>
+
+      {/* Panel de cumplimiento de kilometraje (admin/editor) */}
+      {isManager && kmCompliance.length > 0 && (
+        <div className="bg-white rounded-xl border border-gray-100 shadow-sm">
+          <div className="p-5 border-b border-gray-100 flex items-center justify-between">
+            <h3 className="font-semibold text-gray-800 flex items-center gap-2">
+              <Gauge className="w-4 h-4 text-construserv-orange" />
+              Control de Kilometraje
+            </h3>
+            {kmAtrasados > 0 ? (
+              <span className="text-xs font-semibold bg-red-100 text-red-700 px-2.5 py-1 rounded-full">
+                {kmAtrasados} atrasado(s)
+              </span>
+            ) : (
+              <span className="text-xs font-semibold bg-green-100 text-green-700 px-2.5 py-1 rounded-full">
+                Todos al día
+              </span>
+            )}
+          </div>
+          <div className="divide-y divide-gray-50">
+            {kmCompliance.map((k) => {
+              const isLate = k.days === null || k.days >= 7;
+              const isWarn = k.days !== null && k.days >= 3 && k.days < 7;
+              const label =
+                k.days === null ? "Nunca ha reportado"
+                : k.days === 0 ? "Reportó hoy"
+                : k.days === 1 ? "Hace 1 día"
+                : `Hace ${k.days} días`;
+              return (
+                <Link
+                  key={k.vehicleId}
+                  href={`/dashboard/vehiculos/${k.vehicleId}`}
+                  className="px-5 py-3 flex items-center justify-between hover:bg-gray-50 transition"
+                >
+                  <div>
+                    <p className="text-sm font-medium text-gray-800">{k.driver}</p>
+                    <p className="text-xs text-gray-500">{k.vehicle}</p>
+                  </div>
+                  <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${
+                    isLate ? "bg-red-100 text-red-700" :
+                    isWarn ? "bg-yellow-100 text-yellow-700" :
+                    "bg-green-100 text-green-700"
+                  }`}>
+                    {label}
+                  </span>
+                </Link>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Documentos por vencer */}

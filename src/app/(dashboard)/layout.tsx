@@ -3,6 +3,8 @@ import { redirect } from "next/navigation";
 import Sidebar from "@/components/layout/Sidebar";
 import Header from "@/components/layout/Header";
 import MobileNav from "@/components/layout/MobileNav";
+import KmCheckInGate from "@/components/odometer/KmCheckInGate";
+import { todaySantiago } from "@/lib/date";
 
 export default async function DashboardLayout({
   children,
@@ -29,6 +31,41 @@ export default async function DashboardLayout({
   ]);
   const alertCount = (docsCount ?? 0) + (licCount ?? 0) + (maintCount ?? 0);
 
+  // Si el usuario es conductor con vehículo asignado, verificar si registró el km de hoy
+  let kmCheckIn: {
+    vehicleId: string;
+    vehicleLabel: string;
+    lastKm: number | null;
+    driverName: string | null;
+  } | null = null;
+
+  const { data: assignment } = await supabase
+    .from("vehicle_drivers")
+    .select("driver_name, vehicle:vehicles(id, brand, model, plate, current_km)")
+    .eq("profile_id", user.id)
+    .is("end_date", null)
+    .maybeSingle();
+
+  if (assignment?.vehicle) {
+    const veh = assignment.vehicle as unknown as {
+      id: string; brand: string; model: string; plate: string; current_km: number;
+    };
+    const { count: readingToday } = await supabase
+      .from("odometer_readings")
+      .select("id", { count: "exact", head: true })
+      .eq("vehicle_id", veh.id)
+      .eq("reading_date", todaySantiago());
+
+    if (!readingToday || readingToday === 0) {
+      kmCheckIn = {
+        vehicleId: veh.id,
+        vehicleLabel: `${veh.brand} ${veh.model} — ${veh.plate}`,
+        lastKm: veh.current_km ?? null,
+        driverName: assignment.driver_name ?? null,
+      };
+    }
+  }
+
   return (
     <div className="flex h-screen bg-gray-50 dark:bg-gray-950 overflow-hidden">
       <Sidebar profile={profile} />
@@ -39,6 +76,14 @@ export default async function DashboardLayout({
         </main>
       </div>
       <MobileNav profile={profile} />
+      {kmCheckIn && (
+        <KmCheckInGate
+          vehicleId={kmCheckIn.vehicleId}
+          vehicleLabel={kmCheckIn.vehicleLabel}
+          lastKm={kmCheckIn.lastKm}
+          driverName={kmCheckIn.driverName}
+        />
+      )}
     </div>
   );
 }

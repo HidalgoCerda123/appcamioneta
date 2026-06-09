@@ -14,6 +14,7 @@ import {
   LogOut,
   HardHat,
   ShieldCheck,
+  Gauge,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/client";
@@ -26,6 +27,7 @@ const navItems = [
   { href: "/dashboard/conductores", label: "Conductores", icon: HardHat },
   { href: "/dashboard/mantenciones", label: "Mantenciones", icon: Wrench },
   { href: "/dashboard/documentos", label: "Documentos", icon: FileText },
+  { href: "/dashboard/registrar-km", label: "Registrar Km", icon: Gauge },
   { href: "/dashboard/notificaciones", label: "Notificaciones", icon: Bell },
   { href: "/dashboard/reportes", label: "Reportes", icon: BarChart3 },
 ];

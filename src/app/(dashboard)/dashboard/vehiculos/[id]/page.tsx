@@ -5,6 +5,7 @@ import { ArrowLeft, Truck, Gauge, Wrench, FileText, Pencil, Clock } from "lucide
 import DeleteButton from "@/components/ui/DeleteButton";
 import { formatCurrency, formatDate, formatKm, getDaysUntil, getAlertColor } from "@/lib/utils";
 import DriverSection from "@/components/vehicles/DriverSection";
+import VehicleKmCard from "@/components/odometer/VehicleKmCard";
 
 const statusConfig = {
   activo: { label: "Activo", class: "bg-green-100 text-green-700" },
@@ -48,11 +49,12 @@ export default async function VehicleDetailPage({
   const { id } = await params;
   const supabase = await createClient();
 
-  const [{ data: vehicle }, { data: maintenances }, { data: documents }, { data: drivers }] = await Promise.all([
+  const [{ data: vehicle }, { data: maintenances }, { data: documents }, { data: drivers }, { data: kmReadings }] = await Promise.all([
     supabase.from("vehicles").select("*").eq("id", id).single(),
     supabase.from("maintenances").select("*").eq("vehicle_id", id).order("date", { ascending: false }),
     supabase.from("vehicle_documents").select("*").eq("vehicle_id", id).order("expiry_date", { ascending: true }),
     supabase.from("vehicle_drivers").select("*").eq("vehicle_id", id).order("start_date", { ascending: false }),
+    supabase.from("odometer_readings").select("id, km, reading_date, source, driver_name").eq("vehicle_id", id).order("reading_date", { ascending: false }).order("created_at", { ascending: false }),
   ]);
 
   // Próxima mantención programada (la más reciente con next_service_date o next_service_km)
@@ -181,6 +183,14 @@ export default async function VehicleDetailPage({
           Registrado el {new Date(vehicle.created_at).toLocaleDateString("es-CL", { day: "numeric", month: "long", year: "numeric" })}
         </div>
       </div>
+
+      {/* Kilometraje */}
+      <VehicleKmCard
+        vehicleId={id}
+        vehicleLabel={`${vehicle.brand} ${vehicle.model} — ${vehicle.plate}`}
+        currentKm={vehicle.current_km}
+        readings={kmReadings ?? []}
+      />
 
       {/* Conductor */}
       <DriverSection vehicleId={id} vehicleStatus={vehicle.status} drivers={drivers ?? []} />

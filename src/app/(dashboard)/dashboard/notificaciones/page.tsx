@@ -35,7 +35,7 @@ export default async function NotificationsPage() {
   for (const p of linkedProfiles ?? []) profileEmailMap[p.id] = p.email;
 
   const linkedDrivers = (linkedDriversRaw ?? []).map((d) => {
-    const veh = d.vehicle as { plate: string; brand: string; model: string } | null;
+    const veh = d.vehicle as unknown as { plate: string; brand: string; model: string } | null;
     return {
       driver_name: d.driver_name,
       vehicle_plate: veh?.plate ?? "",

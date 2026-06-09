@@ -214,12 +214,22 @@ export default function MaintenanceForm({ vehicles, preselectedVehicleId, mainte
       }
       if (error) throw new Error(error.message);
 
-      // Actualizar kilometraje del vehículo si es mayor
+      // Actualizar kilometraje del vehículo si es mayor + registrar lectura de odómetro
       const { data: vehicle } = await supabase
         .from("vehicles")
         .select("current_km")
         .eq("id", form.vehicle_id)
         .single();
+
+      if (!isEditing && Number(form.km_at_service) > 0) {
+        await supabase.from("odometer_readings").insert({
+          vehicle_id: form.vehicle_id,
+          km: Number(form.km_at_service),
+          reading_date: form.date,
+          source: "maintenance",
+          recorded_by: user.id,
+        });
+      }
 
       if (vehicle && Number(form.km_at_service) > vehicle.current_km) {
         await supabase

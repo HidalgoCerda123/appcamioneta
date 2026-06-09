@@ -74,8 +74,20 @@ export default function VehicleForm({ vehicle }: Props) {
         .eq("id", vehicle.id);
       if (error) { setError(error.message); setLoading(false); return; }
     } else {
-      const { error } = await supabase.from("vehicles").insert(payload);
+      const { data: newVehicle, error } = await supabase.from("vehicles").insert(payload).select("id").single();
       if (error) { setError(error.message); setLoading(false); return; }
+
+      // Registrar lectura inicial de odómetro
+      if (newVehicle && Number(form.current_km) > 0) {
+        const { data: { user } } = await supabase.auth.getUser();
+        await supabase.from("odometer_readings").insert({
+          vehicle_id: newVehicle.id,
+          km: Number(form.current_km),
+          reading_date: new Date().toISOString().split("T")[0],
+          source: "initial",
+          recorded_by: user?.id ?? null,
+        });
+      }
     }
 
     router.push("/dashboard/vehiculos");

@@ -162,8 +162,17 @@ export default function DocumentForm({ vehicles, preselectedVehicleId, document 
 
       if (dbError) throw new Error(dbError.message);
 
-      // Actualizar kilometraje del vehículo si el ingresado es mayor
-      if (form.km_at_renewal) {
+      // Actualizar kilometraje del vehículo si el ingresado es mayor + registrar lectura
+      if (form.km_at_renewal && Number(form.km_at_renewal) > 0) {
+        if (!isEditing) {
+          await supabase.from("odometer_readings").insert({
+            vehicle_id: form.vehicle_id,
+            km: Number(form.km_at_renewal),
+            reading_date: form.issue_date || new Date().toISOString().split("T")[0],
+            source: "document",
+            recorded_by: user?.id ?? null,
+          });
+        }
         const { data: vehicle } = await supabase
           .from("vehicles")
           .select("current_km")
