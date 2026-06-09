@@ -1,9 +1,15 @@
 import { createClient } from "@/lib/supabase/server";
-import { Truck, Wrench, FileWarning, AlertTriangle, CheckCircle, UserCheck, XCircle, Gauge } from "lucide-react";
+import { Truck, Wrench, FileWarning, AlertTriangle, CheckCircle, UserCheck, XCircle, Gauge, CalendarClock } from "lucide-react";
 import { formatCurrency, formatDate, getDaysUntil, getAlertColor } from "@/lib/utils";
 import { daysSince } from "@/lib/date";
+import { computePlanStatus, type MaintenancePlan as MaintenancePlanType } from "@/lib/maintenance";
 import Link from "next/link";
 import type { VehicleDocument } from "@/types";
+
+const MAINT_TYPE_LABELS: Record<string, string> = {
+  aceite: "Aceite", frenos: "Frenos", neumaticos: "Neumáticos", filtros: "Filtros",
+  suspension: "Suspensión", electrico: "Eléctrico", general: "General", otro: "Otro",
+};
 
 export const metadata = { title: 'Dashboard' };
 
@@ -86,6 +92,53 @@ export default async function DashboardPage() {
   }
 
   const kmAtrasados = kmCompliance.filter((k) => k.days === null || k.days >= 7).length;
+
+  // Mantenciones preventivas por vencer — solo para admin / editor
+  const preventiveDue: {
+    vehicleId: string; vehicle: string; type: string; level: "overdue" | "soon"; detail: string;
+  }[] = [];
+  if (isManager) {
+    const [{ data: planRows }, { data: vehRows }, { data: maintRows }] = await Promise.all([
+      supabase.from("maintenance_plans").select("*").eq("active", true),
+      supabase.from("vehicles").select("id, brand, model, plate, current_km, usage_unit"),
+      supabase.from("maintenances").select("vehicle_id, type, km_at_service, date").order("date", { ascending: false }),
+    ]);
+
+    const vehMap: Record<string, { brand: string; model: string; plate: string; current_km: number; usage_unit: "km" | "horas" }> = {};
+    for (const v of vehRows ?? []) vehMap[v.id] = v as typeof vehMap[string];
+
+    const lastMap: Record<string, { km_at_service: number; date: string }> = {};
+    for (const m of maintRows ?? []) {
+      const key = `${m.vehicle_id}|${m.type}`;
+      if (!lastMap[key]) lastMap[key] = { km_at_service: m.km_at_service, date: m.date };
+    }
+
+    for (const plan of planRows ?? []) {
+      const veh = vehMap[plan.vehicle_id];
+      if (!veh) continue;
+      const last = lastMap[`${plan.vehicle_id}|${plan.type}`] ?? null;
+      const st = computePlanStatus(plan as MaintenancePlanType, last, veh.current_km, veh.usage_unit);
+      if (st.level !== "overdue" && st.level !== "soon") continue;
+      const us = veh.usage_unit === "horas" ? "h" : "km";
+      const parts: string[] = [];
+      if (st.remainingValue !== null) {
+        parts.push(st.remainingValue <= 0
+          ? `vencida por ${Math.abs(st.remainingValue).toLocaleString("es-CL")} ${us}`
+          : `faltan ${st.remainingValue.toLocaleString("es-CL")} ${us}`);
+      }
+      if (st.daysLeft !== null) {
+        parts.push(st.daysLeft <= 0 ? `vencida hace ${Math.abs(st.daysLeft)} días` : `${st.daysLeft} días`);
+      }
+      preventiveDue.push({
+        vehicleId: plan.vehicle_id,
+        vehicle: `${veh.brand} ${veh.model} (${veh.plate})`,
+        type: plan.type,
+        level: st.level,
+        detail: parts.join(" · "),
+      });
+    }
+    preventiveDue.sort((a, b) => (a.level === b.level ? 0 : a.level === "overdue" ? -1 : 1));
+  }
 
   const stats = [
     { label: "Total Vehículos", value: totalVehicles ?? 0, icon: Truck, color: "bg-blue-500", href: "/dashboard/vehiculos" },
@@ -194,6 +247,42 @@ export default async function DashboardPage() {
                 </Link>
               );
             })}
+          </div>
+        </div>
+      )}
+
+      {/* Mantenciones preventivas por vencer (admin/editor) */}
+      {isManager && preventiveDue.length > 0 && (
+        <div className="bg-white rounded-xl border border-orange-100 shadow-sm">
+          <div className="p-5 border-b border-orange-100 flex items-center justify-between">
+            <h3 className="font-semibold text-gray-800 flex items-center gap-2">
+              <CalendarClock className="w-4 h-4 text-construserv-orange" />
+              Mantenciones Preventivas por Vencer
+            </h3>
+            <span className="text-xs font-semibold bg-orange-100 text-orange-700 px-2.5 py-1 rounded-full">
+              {preventiveDue.length}
+            </span>
+          </div>
+          <div className="divide-y divide-gray-50">
+            {preventiveDue.map((p, i) => (
+              <Link
+                key={`${p.vehicleId}-${p.type}-${i}`}
+                href={`/dashboard/vehiculos/${p.vehicleId}`}
+                className="px-5 py-3 flex items-center justify-between hover:bg-gray-50 transition"
+              >
+                <div>
+                  <p className="text-sm font-medium text-gray-800">
+                    {MAINT_TYPE_LABELS[p.type] ?? p.type} — {p.vehicle}
+                  </p>
+                  <p className="text-xs text-gray-500">{p.detail}</p>
+                </div>
+                <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${
+                  p.level === "overdue" ? "bg-red-100 text-red-700" : "bg-yellow-100 text-yellow-700"
+                }`}>
+                  {p.level === "overdue" ? "Vencida" : "Próxima"}
+                </span>
+              </Link>
+            ))}
           </div>
         </div>
       )}

@@ -6,6 +6,8 @@ import DeleteButton from "@/components/ui/DeleteButton";
 import { formatCurrency, formatDate, formatUsage, getDaysUntil, getAlertColor } from "@/lib/utils";
 import DriverSection from "@/components/vehicles/DriverSection";
 import VehicleKmCard from "@/components/odometer/VehicleKmCard";
+import MaintenancePlans from "@/components/maintenances/MaintenancePlans";
+import type { LastService } from "@/lib/maintenance";
 
 const statusConfig = {
   activo: { label: "Activo", class: "bg-green-100 text-green-700" },
@@ -49,13 +51,21 @@ export default async function VehicleDetailPage({
   const { id } = await params;
   const supabase = await createClient();
 
-  const [{ data: vehicle }, { data: maintenances }, { data: documents }, { data: drivers }, { data: kmReadings }] = await Promise.all([
+  const [{ data: vehicle }, { data: maintenances }, { data: documents }, { data: drivers }, { data: kmReadings }, { data: plans }, { data: { user } }] = await Promise.all([
     supabase.from("vehicles").select("*").eq("id", id).single(),
     supabase.from("maintenances").select("*").eq("vehicle_id", id).order("date", { ascending: false }),
     supabase.from("vehicle_documents").select("*").eq("vehicle_id", id).order("expiry_date", { ascending: true }),
     supabase.from("vehicle_drivers").select("*").eq("vehicle_id", id).order("start_date", { ascending: false }),
     supabase.from("odometer_readings").select("id, km, reading_date, source, driver_name").eq("vehicle_id", id).order("reading_date", { ascending: false }).order("created_at", { ascending: false }),
+    supabase.from("maintenance_plans").select("*").eq("vehicle_id", id).order("created_at", { ascending: true }),
+    supabase.auth.getUser(),
   ]);
+
+  let canEditPlans = false;
+  if (user) {
+    const { data: prof } = await supabase.from("profiles").select("role").eq("id", user.id).single();
+    canEditPlans = prof?.role === "admin" || prof?.role === "editor";
+  }
 
   // Próxima mantención programada (la más reciente con next_service_date o next_service_km)
   const nextMaint = maintenances?.find((m) => m.next_service_date || m.next_service_km);
@@ -66,6 +76,18 @@ export default async function VehicleDetailPage({
   const totalMaintenance = maintenances?.reduce((sum, m) => sum + m.total_cost, 0) ?? 0;
   const totalDocuments = documents?.reduce((sum, d) => sum + (d.amount_paid ?? 0), 0) ?? 0;
   const totalSpend = totalMaintenance + totalDocuments;
+
+  // Última mantención por tipo (para planes preventivos); maintenances viene ordenado por fecha desc
+  const lastByType: Record<string, LastService> = {};
+  for (const m of maintenances ?? []) {
+    if (!lastByType[m.type]) lastByType[m.type] = { km_at_service: m.km_at_service, date: m.date };
+  }
+
+  // Costo por km/hora según el uso registrado
+  const readingVals = (kmReadings ?? []).map((r) => r.km);
+  const usageSpan = readingVals.length >= 2 ? Math.max(...readingVals) - Math.min(...readingVals) : 0;
+  const costPerUsage = usageSpan > 0 ? Math.round(totalSpend / usageSpan) : null;
+  const unitShort = vehicle.usage_unit === "horas" ? "h" : "km";
 
   return (
     <div className="space-y-6">
@@ -172,6 +194,12 @@ export default async function VehicleDetailPage({
               <p className="text-xs text-gray-400 uppercase tracking-wide">Gasto Total</p>
               <p className="font-semibold text-construserv-orange mt-0.5">{formatCurrency(totalSpend)}</p>
             </div>
+            {costPerUsage !== null && (
+              <div>
+                <p className="text-xs text-gray-400 uppercase tracking-wide">Costo por {unitShort}</p>
+                <p className="font-semibold text-gray-800 mt-0.5">{formatCurrency(costPerUsage)}/{unitShort}</p>
+              </div>
+            )}
           </div>
         </div>
         {vehicle.notes && (
@@ -193,6 +221,16 @@ export default async function VehicleDetailPage({
         currentKm={vehicle.current_km}
         readings={kmReadings ?? []}
         unit={vehicle.usage_unit}
+      />
+
+      {/* Mantención preventiva */}
+      <MaintenancePlans
+        vehicleId={id}
+        unit={vehicle.usage_unit}
+        currentValue={vehicle.current_km}
+        plans={plans ?? []}
+        lastByType={lastByType}
+        canEdit={canEditPlans}
       />
 
       {/* Conductor */}

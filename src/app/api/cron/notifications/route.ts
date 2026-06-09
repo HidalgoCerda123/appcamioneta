@@ -1,6 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { Resend } from "resend";
+import { computePlanStatus, type MaintenancePlan } from "@/lib/maintenance";
+
+const MAINT_LABELS: Record<string, string> = {
+  aceite: "Aceite", frenos: "Frenos", neumaticos: "Neumáticos", filtros: "Filtros",
+  suspension: "Suspensión", electrico: "Eléctrico", general: "General", otro: "Otro",
+};
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 const supabase = createClient(
@@ -44,8 +50,14 @@ function filterByDays(items: any[], dateField: string, daysBefore: number[]): an
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function buildEmail(title: string, docs: any[], licencias: any[], maints: any[], driverMap: Record<string, string>): string {
-  const total = docs.length + licencias.length + maints.length;
+function buildEmail(title: string, docs: any[], licencias: any[], maints: any[], driverMap: Record<string, string>, preventive: { label: string; vehicle: string; detail: string; overdue: boolean }[] = []): string {
+  const total = docs.length + licencias.length + maints.length + preventive.length;
+
+  const prevRows = preventive.map((p) => `<tr>
+      <td style="${tdStyle}">${p.label}</td>
+      <td style="${tdStyle}">${p.vehicle}</td>
+      <td style="${tdStyle}font-weight:600;color:${p.overdue ? "#dc2626" : "#d97706"};">${p.detail}</td>
+    </tr>`).join("");
 
   const docRows = docs.map((d) => {
     const days = daysUntil(d.expiry_date);
@@ -110,6 +122,12 @@ function buildEmail(title: string, docs: any[], licencias: any[], maints: any[],
     <div style="overflow-x:auto;margin-bottom:28px;"><table style="width:100%;border-collapse:collapse;min-width:480px;">
       <thead><tr><th style="${thStyle}">Tipo</th><th style="${thStyle}">Vehículo</th><th style="${thStyle}">Fecha</th><th style="${thStyle}">Conductor</th><th style="${thStyle}">Estado</th></tr></thead>
       <tbody>${maintRows}</tbody>
+    </table></div>` : ""}
+    ${preventive.length > 0 ? `
+    <h3 style="margin:0 0 12px;color:#1A1A2E;font-size:15px;border-left:4px solid #f59e0b;padding-left:10px;">🗓️ Mantención Preventiva por Vencer (${preventive.length})</h3>
+    <div style="overflow-x:auto;margin-bottom:28px;"><table style="width:100%;border-collapse:collapse;min-width:480px;">
+      <thead><tr><th style="${thStyle}">Tipo</th><th style="${thStyle}">Vehículo</th><th style="${thStyle}">Estado</th></tr></thead>
+      <tbody>${prevRows}</tbody>
     </table></div>` : ""}
     <div style="background:#fff7ed;border:1px solid #fed7aa;border-radius:8px;padding:16px;">
       <p style="margin:0;color:#9a3412;font-size:13px;">Ingresa a <strong>ConstruservAPP</strong> para gestionar estas alertas.</p>
@@ -208,10 +226,52 @@ export async function GET(req: NextRequest) {
     if (!error) sent++;
   }
 
+  // ── Preventivas de la flota (para el correo del admin) ──
+  const preventiveAdmin: { label: string; vehicle: string; detail: string; overdue: boolean }[] = [];
+  const { data: planRows } = await supabase.from("maintenance_plans").select("*").eq("active", true);
+  if (planRows && planRows.length > 0) {
+    const [{ data: vehRows }, { data: maintAll }] = await Promise.all([
+      supabase.from("vehicles").select("id, brand, model, plate, current_km, usage_unit"),
+      supabase.from("maintenances").select("vehicle_id, type, km_at_service, date").order("date", { ascending: false }),
+    ]);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const vehMap: Record<string, any> = {};
+    for (const v of vehRows ?? []) vehMap[v.id] = v;
+    const lastMap: Record<string, { km_at_service: number; date: string }> = {};
+    for (const m of maintAll ?? []) {
+      const key = `${m.vehicle_id}|${m.type}`;
+      if (!lastMap[key]) lastMap[key] = { km_at_service: m.km_at_service, date: m.date };
+    }
+    for (const plan of planRows) {
+      const veh = vehMap[plan.vehicle_id];
+      if (!veh) continue;
+      const last = lastMap[`${plan.vehicle_id}|${plan.type}`] ?? null;
+      const st = computePlanStatus(plan as MaintenancePlan, last, veh.current_km, veh.usage_unit);
+      if (st.level !== "overdue" && st.level !== "soon") continue;
+      const us = veh.usage_unit === "horas" ? "h" : "km";
+      const parts: string[] = [];
+      if (st.remainingValue !== null) {
+        parts.push(st.remainingValue <= 0
+          ? `Vencida por ${Math.abs(st.remainingValue).toLocaleString("es-CL")} ${us}`
+          : `Faltan ${st.remainingValue.toLocaleString("es-CL")} ${us}`);
+      }
+      if (st.daysLeft !== null) {
+        parts.push(st.daysLeft <= 0 ? `vencida hace ${Math.abs(st.daysLeft)} días` : `${st.daysLeft} días`);
+      }
+      preventiveAdmin.push({
+        label: MAINT_LABELS[plan.type] ?? plan.type,
+        vehicle: `${veh.brand} ${veh.model} (${veh.plate})`,
+        detail: parts.join(" · "),
+        overdue: st.level === "overdue",
+      });
+    }
+    preventiveAdmin.sort((a, b) => (a.overdue === b.overdue ? 0 : a.overdue ? -1 : 1));
+  }
+
   // ── 2. Enviar a administradores (TODA la flota) ──
-  if ((alertDocs.length > 0 || alertDrivers.length > 0 || alertMaints.length > 0) && configs && configs.length > 0) {
-    const total = alertDocs.length + alertDrivers.length + alertMaints.length;
-    const html = buildEmail("Resumen completo de la flota", alertDocs, alertDrivers, alertMaints, driverMap);
+  if ((alertDocs.length > 0 || alertDrivers.length > 0 || alertMaints.length > 0 || preventiveAdmin.length > 0) && configs && configs.length > 0) {
+    const total = alertDocs.length + alertDrivers.length + alertMaints.length + preventiveAdmin.length;
+    const html = buildEmail("Resumen completo de la flota", alertDocs, alertDrivers, alertMaints, driverMap, preventiveAdmin);
 
     for (const config of configs) {
       const { error } = await resend.emails.send({

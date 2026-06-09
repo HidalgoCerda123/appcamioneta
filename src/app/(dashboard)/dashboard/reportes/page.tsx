@@ -20,9 +20,11 @@ export default async function ReportsPage({
   const prevYear = selectedYear - 1;
   const nextYear = selectedYear + 1;
 
-  const [{ data: maintenances }, { data: documents }] = await Promise.all([
+  const [{ data: maintenances }, { data: documents }, { data: allVehicles }, { data: allReadings }] = await Promise.all([
     supabase.from("maintenances").select("*, vehicle:vehicles(plate, brand, model, type)").order("date"),
     supabase.from("vehicle_documents").select("*, vehicle:vehicles(plate, brand, model)").order("issue_date"),
+    supabase.from("vehicles").select("id, brand, model, plate, current_km, usage_unit"),
+    supabase.from("odometer_readings").select("vehicle_id, km"),
   ]);
 
   // ── Gastos por mes ──────────────────────────────────────────────────────────
@@ -126,6 +128,36 @@ export default async function ReportsPage({
     (documents?.reduce((sum, d) => sum + (d.amount_paid ?? 0), 0) ?? 0);
 
   const expiredDocs = documents?.filter((d) => new Date(d.expiry_date) < new Date()).length ?? 0;
+
+  // ── Costo por km/hora (histórico) ──────────────────────────────────────────────
+  const spendAllByVehicle: Record<string, number> = {};
+  maintenances?.forEach((m) => { spendAllByVehicle[m.vehicle_id] = (spendAllByVehicle[m.vehicle_id] ?? 0) + m.total_cost; });
+  documents?.forEach((d) => { if (d.amount_paid) spendAllByVehicle[d.vehicle_id] = (spendAllByVehicle[d.vehicle_id] ?? 0) + d.amount_paid; });
+
+  const usageRange: Record<string, { min: number; max: number }> = {};
+  (allReadings ?? []).forEach((r) => {
+    const cur = usageRange[r.vehicle_id];
+    if (!cur) usageRange[r.vehicle_id] = { min: r.km, max: r.km };
+    else { if (r.km < cur.min) cur.min = r.km; if (r.km > cur.max) cur.max = r.km; }
+  });
+
+  const costPerUsage = (allVehicles ?? [])
+    .map((v) => {
+      const range = usageRange[v.id];
+      const span = range ? range.max - range.min : 0;
+      const spend = spendAllByVehicle[v.id] ?? 0;
+      const unitShort = v.usage_unit === "horas" ? "h" : "km";
+      return {
+        name: `${v.brand} ${v.model} (${v.plate})`,
+        unitShort,
+        spend,
+        span,
+        cost: span > 0 ? Math.round(spend / span) : null,
+      };
+    })
+    .filter((v) => v.cost !== null)
+    .sort((a, b) => (b.cost ?? 0) - (a.cost ?? 0))
+    .slice(0, 8);
 
   // Datos para exportar CSV
   const exportMaintenances = (maintenances ?? [])
@@ -238,6 +270,40 @@ export default async function ReportsPage({
                   </div>
                 </div>
                 <span className="font-bold text-construserv-orange">{formatCurrency(v.total)}</span>
+              </div>
+            ))
+          )}
+        </div>
+      </div>
+
+      {/* Costo por km/hora */}
+      <div className="bg-white rounded-xl border border-gray-100 shadow-sm">
+        <div className="p-5 border-b border-gray-100">
+          <h3 className="font-semibold text-gray-800">Costo por km / hora (histórico)</h3>
+          <p className="text-xs text-gray-400 mt-0.5">Gasto total dividido por el uso registrado. Los más caros primero — candidatos a revisar o reemplazar.</p>
+        </div>
+        <div className="divide-y divide-gray-50">
+          {costPerUsage.length === 0 ? (
+            <p className="p-5 text-gray-400 text-sm text-center">
+              Aún no hay suficientes lecturas de km/horas para calcular el costo por unidad.
+            </p>
+          ) : (
+            costPerUsage.map((v, i) => (
+              <div key={i} className="px-5 py-3 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <span className="w-6 h-6 rounded-full bg-gray-100 text-gray-600 text-xs font-bold flex items-center justify-center">
+                    {i + 1}
+                  </span>
+                  <div>
+                    <p className="text-sm font-medium text-gray-800">{v.name}</p>
+                    <p className="text-xs text-gray-400">
+                      {formatCurrency(v.spend)} en {v.span.toLocaleString("es-CL")} {v.unitShort}
+                    </p>
+                  </div>
+                </div>
+                <span className="font-bold text-construserv-orange">
+                  {formatCurrency(v.cost ?? 0)}/{v.unitShort}
+                </span>
               </div>
             ))
           )}
