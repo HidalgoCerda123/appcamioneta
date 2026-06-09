@@ -18,6 +18,7 @@ interface Props {
   vehicleLabel: string;
   currentKm: number;
   readings: Reading[];
+  unit?: "km" | "horas";
 }
 
 const SOURCE_LABELS: Record<string, string> = {
@@ -31,8 +32,11 @@ function fmtDate(d: string) {
   return new Date(d + "T12:00:00").toLocaleDateString("es-CL", { day: "2-digit", month: "2-digit", year: "numeric" });
 }
 
-export default function VehicleKmCard({ vehicleId, vehicleLabel, currentKm, readings }: Props) {
+export default function VehicleKmCard({ vehicleId, vehicleLabel, currentKm, readings, unit = "km" }: Props) {
   const [showForm, setShowForm] = useState(false);
+  const isHoras = unit === "horas";
+  const unitShort = isHoras ? "h" : "km";
+  const perLabel = isHoras ? "h/día" : "km/día";
 
   const lastReading = readings[0] ?? null;
   const daysSinceLast = lastReading ? daysSince(lastReading.reading_date) : null;
@@ -58,14 +62,14 @@ export default function VehicleKmCard({ vehicleId, vehicleLabel, currentKm, read
       <div className="p-5 border-b border-gray-100 flex items-center justify-between">
         <h3 className="font-semibold text-gray-800 flex items-center gap-2">
           <Gauge className="w-4 h-4 text-construserv-orange" />
-          Kilometraje
+          {isHoras ? "Horómetro" : "Kilometraje"}
         </h3>
         <button
           onClick={() => setShowForm((s) => !s)}
           className="flex items-center gap-1.5 text-construserv-orange text-sm font-medium hover:underline"
         >
           <Plus className="w-4 h-4" />
-          Registrar km
+          Registrar {unitShort}
         </button>
       </div>
 
@@ -74,7 +78,7 @@ export default function VehicleKmCard({ vehicleId, vehicleLabel, currentKm, read
         <div className="grid grid-cols-3 gap-3">
           <div>
             <p className="text-xs text-gray-400 uppercase tracking-wide">Actual</p>
-            <p className="font-bold text-gray-900 text-lg mt-0.5">{currentKm.toLocaleString("es-CL")}<span className="text-xs font-normal text-gray-400"> km</span></p>
+            <p className="font-bold text-gray-900 text-lg mt-0.5">{currentKm.toLocaleString("es-CL")}<span className="text-xs font-normal text-gray-400"> {unitShort}</span></p>
           </div>
           <div>
             <p className="text-xs text-gray-400 uppercase tracking-wide flex items-center gap-1"><Clock className="w-3 h-3" /> Última lectura</p>
@@ -88,7 +92,7 @@ export default function VehicleKmCard({ vehicleId, vehicleLabel, currentKm, read
           <div>
             <p className="text-xs text-gray-400 uppercase tracking-wide flex items-center gap-1"><TrendingUp className="w-3 h-3" /> Promedio</p>
             <p className="font-semibold text-gray-700 text-sm mt-0.5">
-              {avgPerDay !== null ? `${avgPerDay.toLocaleString("es-CL")} km/día` : "—"}
+              {avgPerDay !== null ? `${avgPerDay.toLocaleString("es-CL")} ${perLabel}` : "—"}
             </p>
           </div>
         </div>
@@ -100,6 +104,7 @@ export default function VehicleKmCard({ vehicleId, vehicleLabel, currentKm, read
               vehicleId={vehicleId}
               vehicleLabel={vehicleLabel}
               lastKm={currentKm}
+              unit={unit}
               variant="card"
               onSuccess={() => setTimeout(() => setShowForm(false), 1500)}
             />
@@ -114,7 +119,7 @@ export default function VehicleKmCard({ vehicleId, vehicleLabel, currentKm, read
               {readings.slice(0, 20).map((r) => (
                 <div key={r.id} className="py-2 flex items-center justify-between">
                   <div>
-                    <p className="text-sm font-medium text-gray-800">{r.km.toLocaleString("es-CL")} km</p>
+                    <p className="text-sm font-medium text-gray-800">{r.km.toLocaleString("es-CL")} {unitShort}</p>
                     <p className="text-xs text-gray-400">
                       {SOURCE_LABELS[r.source] ?? r.source}
                       {r.driver_name ? ` · ${r.driver_name}` : ""}

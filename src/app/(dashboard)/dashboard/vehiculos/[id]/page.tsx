@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, Truck, Gauge, Wrench, FileText, Pencil, Clock } from "lucide-react";
 import DeleteButton from "@/components/ui/DeleteButton";
-import { formatCurrency, formatDate, formatKm, getDaysUntil, getAlertColor } from "@/lib/utils";
+import { formatCurrency, formatDate, formatUsage, getDaysUntil, getAlertColor } from "@/lib/utils";
 import DriverSection from "@/components/vehicles/DriverSection";
 import VehicleKmCard from "@/components/odometer/VehicleKmCard";
 
@@ -112,7 +112,7 @@ export default async function VehicleDetailPage({
               </span>
             )}
             {nextMaint.next_service_date && nextMaint.next_service_km && " · "}
-            {nextMaint.next_service_km && <span>a los {formatKm(nextMaint.next_service_km)}</span>}
+            {nextMaint.next_service_km && <span>a {formatUsage(nextMaint.next_service_km, vehicle.usage_unit)}</span>}
           </p>
         </div>
       )}
@@ -148,10 +148,12 @@ export default async function VehicleDetailPage({
               </span>
             </div>
             <div>
-              <p className="text-xs text-gray-400 uppercase tracking-wide">Kilometraje</p>
+              <p className="text-xs text-gray-400 uppercase tracking-wide">
+                {vehicle.usage_unit === "horas" ? "Horómetro" : "Kilometraje"}
+              </p>
               <p className="font-semibold text-gray-800 mt-0.5 flex items-center gap-1">
                 <Gauge className="w-3.5 h-3.5 text-gray-400" />
-                {formatKm(vehicle.current_km)}
+                {formatUsage(vehicle.current_km, vehicle.usage_unit)}
               </p>
             </div>
             {vehicle.color && (
@@ -190,6 +192,7 @@ export default async function VehicleDetailPage({
         vehicleLabel={`${vehicle.brand} ${vehicle.model} — ${vehicle.plate}`}
         currentKm={vehicle.current_km}
         readings={kmReadings ?? []}
+        unit={vehicle.usage_unit}
       />
 
       {/* Conductor */}
@@ -262,7 +265,7 @@ export default async function VehicleDetailPage({
                     <p className="text-sm font-medium text-gray-800 capitalize">
                       {maintenanceTypeLabels[m.type] ?? m.type}
                     </p>
-                    <p className="text-xs text-gray-400">{m.workshop_name} — {formatKm(m.km_at_service)}</p>
+                    <p className="text-xs text-gray-400">{m.workshop_name} — {formatUsage(m.km_at_service, vehicle.usage_unit)}</p>
                   </div>
                   <div className="text-right">
                     <p className="text-sm font-semibold text-gray-800">{formatCurrency(m.total_cost)}</p>

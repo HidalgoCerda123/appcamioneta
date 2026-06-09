@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { Truck, Gauge, ChevronRight, UserCheck } from "lucide-react";
-import { formatKm } from "@/lib/utils";
+import { formatUsage } from "@/lib/utils";
 import type { Vehicle } from "@/types";
 
 const statusConfig = {
@@ -52,7 +52,7 @@ export default function VehicleCard({ vehicle, currentDriver }: { vehicle: Vehic
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-1.5 text-sm text-gray-600">
           <Gauge className="w-4 h-4 text-gray-400" />
-          {formatKm(vehicle.current_km)}
+          {formatUsage(vehicle.current_km, vehicle.usage_unit)}
         </div>
         <div className="flex items-center gap-2">
           <span className="text-xs text-gray-400">{typeLabels[vehicle.type]}</span>

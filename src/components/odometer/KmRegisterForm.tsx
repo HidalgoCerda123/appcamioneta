@@ -11,6 +11,7 @@ interface Props {
   vehicleLabel: string; // "Toyota Hilux — ABCD-12"
   lastKm: number | null;
   driverName?: string | null;
+  unit?: "km" | "horas";
   /** "large" = pantalla obligatoria; "card" = tarjeta dentro de una página */
   variant?: "large" | "card";
   onSuccess?: () => void;
@@ -21,6 +22,7 @@ export default function KmRegisterForm({
   vehicleLabel,
   lastKm,
   driverName,
+  unit = "km",
   variant = "card",
   onSuccess,
 }: Props) {
@@ -31,17 +33,21 @@ export default function KmRegisterForm({
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState(false);
 
+  const isHoras = unit === "horas";
+  const unitShort = isHoras ? "h" : "km";
+  const unitWord = isHoras ? "horas" : "kilómetros";
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
 
     const value = Number(km);
     if (!km || Number.isNaN(value) || value < 0) {
-      setError("Escribe un número de kilómetros válido.");
+      setError(`Escribe un número de ${unitWord} válido.`);
       return;
     }
     if (lastKm !== null && value < lastKm) {
-      setError(`No puede ser menor a la última lectura registrada (${lastKm.toLocaleString("es-CL")} km).`);
+      setError(`No puede ser menor a la última lectura registrada (${lastKm.toLocaleString("es-CL")} ${unitShort}).`);
       return;
     }
 
@@ -80,7 +86,9 @@ export default function KmRegisterForm({
         <div className="w-16 h-16 rounded-full bg-green-100 flex items-center justify-center mx-auto mb-4">
           <Check className="w-8 h-8 text-green-600" />
         </div>
-        <p className="font-semibold text-gray-900 text-lg">¡Kilometraje registrado!</p>
+        <p className="font-semibold text-gray-900 text-lg">
+          ¡{isHoras ? "Horómetro" : "Kilometraje"} registrado!
+        </p>
         <p className="text-gray-500 text-sm mt-1">Gracias. Ya puedes continuar.</p>
       </div>
     );
@@ -97,7 +105,7 @@ export default function KmRegisterForm({
 
       <div>
         <label className={`block font-medium text-gray-700 mb-2 ${isLarge ? "text-lg" : "text-sm"}`}>
-          ¿Cuántos kilómetros marca hoy?
+          {isHoras ? "¿Cuántas horas marca el horómetro hoy?" : "¿Cuántos kilómetros marca hoy?"}
         </label>
         <input
           type="number"
@@ -112,7 +120,7 @@ export default function KmRegisterForm({
         />
         {lastKm !== null && (
           <p className="text-xs text-gray-400 mt-2 text-center">
-            Última lectura: {lastKm.toLocaleString("es-CL")} km
+            Última lectura: {lastKm.toLocaleString("es-CL")} {unitShort}
           </p>
         )}
       </div>
@@ -131,7 +139,7 @@ export default function KmRegisterForm({
         }`}
       >
         {saving ? <Loader2 className={isLarge ? "w-6 h-6 animate-spin" : "w-5 h-5 animate-spin"} /> : <Check className={isLarge ? "w-6 h-6" : "w-5 h-5"} />}
-        {saving ? "Guardando..." : "Guardar kilometraje"}
+        {saving ? "Guardando..." : `Guardar ${isHoras ? "horómetro" : "kilometraje"}`}
       </button>
     </form>
   );

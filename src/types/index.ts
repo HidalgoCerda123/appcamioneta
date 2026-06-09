@@ -9,6 +9,8 @@ export type VehicleType =
 
 export type VehicleStatus = "activo" | "en_mantencion" | "fuera_de_servicio";
 
+export type UsageUnit = "km" | "horas";
+
 export type MaintenanceType =
   | "aceite"
   | "frenos"
@@ -49,6 +51,7 @@ export interface Vehicle {
   vin?: string;
   color?: string;
   current_km: number;
+  usage_unit: UsageUnit;
   photo_url?: string;
   notes?: string;
   created_at: string;

@@ -42,7 +42,8 @@ async function sendWhatsApp(toPhone: string, body: string): Promise<boolean> {
   }
 }
 
-function driverReminderHtml(driverName: string, vehicleLabel: string): string {
+function driverReminderHtml(driverName: string, vehicleLabel: string, unit: "km" | "horas"): string {
+  const word = unit === "horas" ? "las horas (horómetro)" : "el kilometraje";
   return `<!DOCTYPE html><html><head><meta charset="utf-8"></head>
 <body style="margin:0;padding:0;background:#f9fafb;font-family:Arial,sans-serif;">
 <div style="max-width:520px;margin:32px auto;background:#fff;border-radius:12px;overflow:hidden;border:1px solid #e5e7eb;">
@@ -52,12 +53,12 @@ function driverReminderHtml(driverName: string, vehicleLabel: string): string {
   <div style="padding:32px;text-align:center;">
     <p style="margin:0 0 8px;color:#374151;font-size:16px;">Hola <strong>${driverName}</strong>,</p>
     <p style="margin:0 0 24px;color:#6b7280;font-size:14px;">
-      Necesitamos que registres el kilometraje actual de tu vehículo
+      Necesitamos que registres ${word} actual de tu vehículo
       <strong>${vehicleLabel}</strong>. Solo toma 5 segundos.
     </p>
     <a href="${APP_URL}/dashboard/registrar-km"
        style="display:inline-block;background:#E8500A;color:white;text-decoration:none;padding:16px 32px;border-radius:12px;font-size:17px;font-weight:bold;">
-      📋 Registrar kilometraje
+      📋 Registrar ${unit === "horas" ? "horómetro" : "kilometraje"}
     </a>
     <p style="margin:24px 0 0;color:#9ca3af;font-size:12px;">
       Toca el botón, escribe los km que marca tu vehículo y listo.
@@ -118,7 +119,7 @@ export async function GET(req: NextRequest) {
   // Conductores activos vinculados a una cuenta
   const { data: linkedDrivers } = await supabase
     .from("vehicle_drivers")
-    .select("driver_name, driver_phone, profile_id, vehicle:vehicles(id, brand, model, plate), profile:profiles(email)")
+    .select("driver_name, driver_phone, profile_id, vehicle:vehicles(id, brand, model, plate, usage_unit), profile:profiles(email)")
     .is("end_date", null)
     .not("profile_id", "is", null);
 
@@ -145,6 +146,8 @@ export async function GET(req: NextRequest) {
     const isStale = days === null || days >= STALE_DAYS;
     if (!isStale) continue;
 
+    const unit: "km" | "horas" = veh.usage_unit === "horas" ? "horas" : "km";
+    const usageWord = unit === "horas" ? "las horas" : "el kilometraje";
     const vehicleLabel = `${veh.brand} ${veh.model} (${veh.plate})`;
     nonCompliant.push({ driver: ld.driver_name, vehicle: vehicleLabel, days });
 
@@ -153,8 +156,8 @@ export async function GET(req: NextRequest) {
       const { error } = await resend.emails.send({
         from: process.env.RESEND_FROM!,
         to: profile.email,
-        subject: `🚛 Registra el kilometraje de tu ${veh.brand} ${veh.model}`,
-        html: driverReminderHtml(ld.driver_name, vehicleLabel),
+        subject: `🚛 Registra ${usageWord} de tu ${veh.brand} ${veh.model}`,
+        html: driverReminderHtml(ld.driver_name, vehicleLabel, unit),
       });
       if (!error) emailsSent++;
     }
@@ -163,7 +166,7 @@ export async function GET(req: NextRequest) {
     if (ld.driver_phone) {
       const ok = await sendWhatsApp(
         ld.driver_phone,
-        `🚛 Hola ${ld.driver_name}, registra el kilometraje de tu ${vehicleLabel}: ${APP_URL}/dashboard/registrar-km`
+        `🚛 Hola ${ld.driver_name}, registra ${usageWord} de tu ${vehicleLabel}: ${APP_URL}/dashboard/registrar-km`
       );
       if (ok) whatsappSent++;
     }

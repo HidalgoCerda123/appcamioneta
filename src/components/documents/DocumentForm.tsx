@@ -10,6 +10,7 @@ interface Vehicle {
   plate: string;
   brand: string;
   model: string;
+  usage_unit?: "km" | "horas";
 }
 
 interface Document {
@@ -202,6 +203,9 @@ export default function DocumentForm({ vehicles, preselectedVehicleId, document 
     "w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-construserv-orange focus:border-transparent transition text-sm";
   const labelClass = "block text-sm font-medium text-gray-700 mb-1";
 
+  const selectedUnit = vehicles.find((v) => v.id === form.vehicle_id)?.usage_unit ?? "km";
+  const usageWord = selectedUnit === "horas" ? "Horómetro" : "Kilometraje";
+
   return (
     <form onSubmit={handleSubmit} className="bg-white rounded-xl border border-gray-100 shadow-sm p-6 space-y-5">
       <div>
@@ -245,8 +249,8 @@ export default function DocumentForm({ vehicles, preselectedVehicleId, document 
           <input name="amount_paid" type="number" min={0} value={form.amount_paid} onChange={handleChange} placeholder="0" className={inputClass} />
         </div>
         <div>
-          <label className={labelClass}>Kilometraje al renovar</label>
-          <input name="km_at_renewal" type="number" min={0} value={form.km_at_renewal} onChange={handleChange} placeholder="Ej: 158000" className={inputClass} />
+          <label className={labelClass}>{usageWord} al renovar</label>
+          <input name="km_at_renewal" type="number" min={0} value={form.km_at_renewal} onChange={handleChange} placeholder={selectedUnit === "horas" ? "Ej: 1200" : "Ej: 158000"} className={inputClass} />
           <p className="text-xs text-gray-400 mt-1">Si es mayor al registrado, actualiza el km del vehículo automáticamente</p>
         </div>
         <div>

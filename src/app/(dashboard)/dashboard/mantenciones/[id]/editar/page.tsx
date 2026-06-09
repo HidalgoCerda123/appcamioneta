@@ -16,7 +16,7 @@ export default async function EditMaintenancePage({
 
   const [{ data: maintenance }, { data: vehicles }, { data: allTypes }] = await Promise.all([
     supabase.from("maintenances").select("*").eq("id", id).single(),
-    supabase.from("vehicles").select("id, plate, brand, model").order("brand"),
+    supabase.from("vehicles").select("id, plate, brand, model, usage_unit").order("brand"),
     supabase.from("maintenances").select("type"),
   ]);
 

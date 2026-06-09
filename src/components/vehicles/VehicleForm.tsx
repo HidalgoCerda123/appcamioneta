@@ -24,6 +24,7 @@ export default function VehicleForm({ vehicle }: Props) {
     vin: vehicle?.vin ?? "",
     color: vehicle?.color ?? "",
     current_km: vehicle?.current_km ?? 0,
+    usage_unit: (vehicle?.usage_unit ?? "km") as "km" | "horas",
     notes: vehicle?.notes ?? "",
   });
 
@@ -136,7 +137,16 @@ export default function VehicleForm({ vehicle }: Props) {
           </select>
         </div>
         <div>
-          <label className={labelClass}>Kilometraje Actual *</label>
+          <label className={labelClass}>Unidad de medición *</label>
+          <select name="usage_unit" value={form.usage_unit} onChange={handleChange} className={inputClass}>
+            <option value="km">Kilómetros (odómetro)</option>
+            <option value="horas">Horas (horómetro)</option>
+          </select>
+        </div>
+        <div>
+          <label className={labelClass}>
+            {form.usage_unit === "horas" ? "Horas Actuales *" : "Kilometraje Actual *"}
+          </label>
           <input name="current_km" type="number" value={form.current_km} onChange={handleChange} required min={0} className={inputClass} />
         </div>
         <div>

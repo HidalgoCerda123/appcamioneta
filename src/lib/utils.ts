@@ -25,6 +25,23 @@ export function formatKm(km: number): string {
   return new Intl.NumberFormat("es-CL").format(km) + " km";
 }
 
+export type UsageUnit = "km" | "horas";
+
+/** Etiqueta corta de la unidad: "km" o "h". */
+export function unitLabel(unit: UsageUnit | string | null | undefined): string {
+  return unit === "horas" ? "h" : "km";
+}
+
+/** Etiqueta larga de la unidad: "kilómetros" u "horas". */
+export function unitLabelLong(unit: UsageUnit | string | null | undefined): string {
+  return unit === "horas" ? "horas" : "kilómetros";
+}
+
+/** Formatea un valor de uso según la unidad del vehículo (km u horas). */
+export function formatUsage(value: number, unit: UsageUnit | string | null | undefined): string {
+  return new Intl.NumberFormat("es-CL").format(value) + " " + unitLabel(unit);
+}
+
 export function getDaysUntil(date: string | Date): number {
   const today = new Date();
   today.setHours(0, 0, 0, 0);

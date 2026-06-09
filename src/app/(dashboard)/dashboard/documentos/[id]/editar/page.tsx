@@ -14,7 +14,7 @@ export default async function EditDocumentPage({
 
   const [{ data: document }, { data: vehicles }] = await Promise.all([
     supabase.from("vehicle_documents").select("*").eq("id", id).single(),
-    supabase.from("vehicles").select("id, plate, brand, model").order("brand"),
+    supabase.from("vehicles").select("id, plate, brand, model, usage_unit").order("brand"),
   ]);
 
   if (!document) notFound();

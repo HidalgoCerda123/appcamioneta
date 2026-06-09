@@ -37,11 +37,12 @@ export default async function DashboardLayout({
     vehicleLabel: string;
     lastKm: number | null;
     driverName: string | null;
+    unit: "km" | "horas";
   } | null = null;
 
   const { data: assignment } = await supabase
     .from("vehicle_drivers")
-    .select("driver_name, vehicle:vehicles(id, brand, model, plate, current_km)")
+    .select("driver_name, vehicle:vehicles(id, brand, model, plate, current_km, usage_unit)")
     .eq("profile_id", user.id)
     .is("end_date", null)
     .order("start_date", { ascending: false })
@@ -50,7 +51,7 @@ export default async function DashboardLayout({
 
   if (assignment?.vehicle) {
     const veh = assignment.vehicle as unknown as {
-      id: string; brand: string; model: string; plate: string; current_km: number;
+      id: string; brand: string; model: string; plate: string; current_km: number; usage_unit: "km" | "horas";
     };
     const { count: readingToday } = await supabase
       .from("odometer_readings")
@@ -64,6 +65,7 @@ export default async function DashboardLayout({
         vehicleLabel: `${veh.brand} ${veh.model} — ${veh.plate}`,
         lastKm: veh.current_km ?? null,
         driverName: assignment.driver_name ?? null,
+        unit: veh.usage_unit ?? "km",
       };
     }
   }
@@ -84,6 +86,7 @@ export default async function DashboardLayout({
           vehicleLabel={kmCheckIn.vehicleLabel}
           lastKm={kmCheckIn.lastKm}
           driverName={kmCheckIn.driverName}
+          unit={kmCheckIn.unit}
         />
       )}
     </div>

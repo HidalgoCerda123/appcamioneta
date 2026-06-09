@@ -11,6 +11,7 @@ interface Vehicle {
   plate: string;
   brand: string;
   model: string;
+  usage_unit?: "km" | "horas";
 }
 
 interface Maintenance {
@@ -254,6 +255,10 @@ export default function MaintenanceForm({ vehicles, preselectedVehicleId, mainte
     "w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-construserv-orange focus:border-transparent transition text-sm";
   const labelClass = "block text-sm font-medium text-gray-700 mb-1";
 
+  const selectedUnit = vehicles.find((v) => v.id === form.vehicle_id)?.usage_unit ?? "km";
+  const usageWord = selectedUnit === "horas" ? "Horas" : "Kilometraje";
+  const usageShort = selectedUnit === "horas" ? "horas" : "km";
+
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
       {/* Datos principales */}
@@ -276,7 +281,7 @@ export default function MaintenanceForm({ vehicles, preselectedVehicleId, mainte
             <input name="date" type="date" value={form.date} onChange={handleChange} required className={inputClass} />
           </div>
           <div>
-            <label className={labelClass}>Kilometraje al servicio *</label>
+            <label className={labelClass}>{usageWord} al servicio *</label>
             <input name="km_at_service" type="number" value={form.km_at_service} onChange={handleChange} required min={0} className={inputClass} />
           </div>
           <div>
@@ -434,8 +439,8 @@ export default function MaintenanceForm({ vehicles, preselectedVehicleId, mainte
         <h3 className="font-semibold text-gray-800 mb-4">Próxima Mantención</h3>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
-            <label className={labelClass}>Próximo km recomendado</label>
-            <input name="next_service_km" type="number" min={0} value={form.next_service_km} onChange={handleChange} placeholder="Ej: 165000" className={inputClass} />
+            <label className={labelClass}>Próximo {usageShort} recomendado</label>
+            <input name="next_service_km" type="number" min={0} value={form.next_service_km} onChange={handleChange} placeholder={selectedUnit === "horas" ? "Ej: 1500" : "Ej: 165000"} className={inputClass} />
           </div>
           <div>
             <label className={labelClass}>Próxima fecha recomendada</label>

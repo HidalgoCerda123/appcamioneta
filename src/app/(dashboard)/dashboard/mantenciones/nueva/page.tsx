@@ -14,7 +14,7 @@ export default async function NewMaintenancePage({
   const DEFAULT_TYPES = ["aceite","frenos","neumaticos","filtros","suspension","electrico","general","otro"];
 
   const [{ data: vehicles }, { data: allTypes }] = await Promise.all([
-    supabase.from("vehicles").select("id, plate, brand, model").order("brand"),
+    supabase.from("vehicles").select("id, plate, brand, model, usage_unit").order("brand"),
     supabase.from("maintenances").select("type"),
   ]);
 

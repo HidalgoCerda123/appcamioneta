@@ -13,7 +13,7 @@ export default async function NewDocumentPage({
 
   const { data: vehicles } = await supabase
     .from("vehicles")
-    .select("id, plate, brand, model")
+    .select("id, plate, brand, model, usage_unit")
     .order("brand");
 
   return (

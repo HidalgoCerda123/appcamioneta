@@ -153,7 +153,7 @@ export default async function DashboardPage() {
           <div className="p-5 border-b border-gray-100 flex items-center justify-between">
             <h3 className="font-semibold text-gray-800 flex items-center gap-2">
               <Gauge className="w-4 h-4 text-construserv-orange" />
-              Control de Kilometraje
+              Control de Uso (km / horas)
             </h3>
             {kmAtrasados > 0 ? (
               <span className="text-xs font-semibold bg-red-100 text-red-700 px-2.5 py-1 rounded-full">

@@ -15,7 +15,7 @@ export default async function RegistrarKmPage() {
   // Buscar el vehículo asignado al usuario (conductor)
   const { data: assignment } = await supabase
     .from("vehicle_drivers")
-    .select("driver_name, vehicle:vehicles(id, brand, model, plate, current_km)")
+    .select("driver_name, vehicle:vehicles(id, brand, model, plate, current_km, usage_unit)")
     .eq("profile_id", user.id)
     .is("end_date", null)
     .order("start_date", { ascending: false })
@@ -45,8 +45,9 @@ export default async function RegistrarKmPage() {
   }
 
   const veh = assignment.vehicle as unknown as {
-    id: string; brand: string; model: string; plate: string; current_km: number;
+    id: string; brand: string; model: string; plate: string; current_km: number; usage_unit: "km" | "horas";
   };
+  const unitShort = veh.usage_unit === "horas" ? "h" : "km";
 
   // ¿Ya registró el km de hoy?
   const { data: todayReading } = await supabase
@@ -64,8 +65,12 @@ export default async function RegistrarKmPage() {
         <div className="w-14 h-14 rounded-full bg-orange-100 flex items-center justify-center mx-auto mb-3">
           <Gauge className="w-7 h-7 text-construserv-orange" />
         </div>
-        <h2 className="text-2xl font-bold text-gray-900">Registrar Kilometraje</h2>
-        <p className="text-gray-500 text-sm mt-1">Anota cuántos km marca tu vehículo hoy</p>
+        <h2 className="text-2xl font-bold text-gray-900">
+          Registrar {veh.usage_unit === "horas" ? "Horómetro" : "Kilometraje"}
+        </h2>
+        <p className="text-gray-500 text-sm mt-1">
+          Anota cuántos {veh.usage_unit === "horas" ? "horas marca el horómetro" : "km marca tu vehículo"} hoy
+        </p>
       </div>
 
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
@@ -74,9 +79,11 @@ export default async function RegistrarKmPage() {
             <div className="w-14 h-14 rounded-full bg-green-100 flex items-center justify-center mx-auto mb-3">
               <CheckCircle className="w-7 h-7 text-green-600" />
             </div>
-            <p className="font-semibold text-gray-900">Ya registraste el km de hoy</p>
+            <p className="font-semibold text-gray-900">
+              Ya registraste {veh.usage_unit === "horas" ? "las horas" : "el km"} de hoy
+            </p>
             <p className="text-gray-500 text-sm mt-1">
-              {veh.brand} {veh.model} — {todayReading.km.toLocaleString("es-CL")} km
+              {veh.brand} {veh.model} — {todayReading.km.toLocaleString("es-CL")} {unitShort}
             </p>
             <p className="text-xs text-gray-400 mt-3">Vuelve mañana para registrar nuevamente. ¡Gracias!</p>
           </div>
@@ -86,6 +93,7 @@ export default async function RegistrarKmPage() {
             vehicleLabel={`${veh.brand} ${veh.model} — ${veh.plate}`}
             lastKm={veh.current_km ?? null}
             driverName={assignment.driver_name ?? null}
+            unit={veh.usage_unit ?? "km"}
             variant="large"
           />
         )}

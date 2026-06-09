@@ -11,15 +11,17 @@ interface Props {
   vehicleLabel: string;
   lastKm: number | null;
   driverName?: string | null;
+  unit?: "km" | "horas";
 }
 
 /**
  * Pantalla obligatoria: si el conductor no ha registrado el km de hoy,
  * se muestra un overlay que bloquea la app hasta que lo ingrese.
  */
-export default function KmCheckInGate({ vehicleId, vehicleLabel, lastKm, driverName }: Props) {
+export default function KmCheckInGate({ vehicleId, vehicleLabel, lastKm, driverName, unit = "km" }: Props) {
   const [open, setOpen] = useState(true);
   const router = useRouter();
+  const isHoras = unit === "horas";
 
   async function handleLogout() {
     const supabase = createClient();
@@ -37,9 +39,11 @@ export default function KmCheckInGate({ vehicleId, vehicleLabel, lastKm, driverN
           <div className="w-14 h-14 rounded-full bg-orange-100 flex items-center justify-center mx-auto mb-3">
             <Gauge className="w-7 h-7 text-construserv-orange" />
           </div>
-          <h2 className="text-xl font-bold text-gray-900">Registra el kilometraje de hoy</h2>
+          <h2 className="text-xl font-bold text-gray-900">
+            Registra {isHoras ? "las horas" : "el kilometraje"} de hoy
+          </h2>
           <p className="text-gray-500 text-sm mt-1">
-            Antes de continuar, anota cuántos kilómetros marca tu vehículo. Solo toma unos segundos.
+            Antes de continuar, anota cuántos {isHoras ? "horas marca el horómetro" : "kilómetros marca tu vehículo"}. Solo toma unos segundos.
           </p>
         </div>
 
@@ -48,6 +52,7 @@ export default function KmCheckInGate({ vehicleId, vehicleLabel, lastKm, driverN
           vehicleLabel={vehicleLabel}
           lastKm={lastKm}
           driverName={driverName}
+          unit={unit}
           variant="large"
           onSuccess={() => setTimeout(() => setOpen(false), 1500)}
         />
