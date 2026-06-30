@@ -124,7 +124,7 @@ export default async function MonthlyReportPage({
             <p className="text-gray-500 mt-1">{MONTHS[month - 1]} {year} — Pares y Alvarez</p>
           </div>
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/Logo construserv.jpg" alt="Pares y Alvarez" className="h-14 w-auto object-contain" />
+          <img src="/logo-pares-alvarez.png" alt="Pares y Alvarez" className="h-14 w-auto object-contain" />
         </div>
 
         {/* Resumen */}

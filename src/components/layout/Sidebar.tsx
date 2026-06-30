@@ -60,7 +60,7 @@ export default function Sidebar({ profile }: { profile: Profile | null }) {
       {/* Logo */}
       <div className="flex items-center justify-center px-6 py-4 border-b border-white/10">
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="/Logo construserv.jpg" alt="Pares y Alvarez" className="h-14 w-auto object-contain" />
+        <img src="/logo-pares-alvarez.png" alt="Pares y Alvarez" className="h-14 w-auto object-contain" />
       </div>
 
       {/* Navegación */}
