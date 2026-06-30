@@ -105,6 +105,7 @@ export default function MaintenanceForm({ vehicles, preselectedVehicleId, mainte
   const [photoFiles, setPhotoFiles] = useState<File[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [confirmLowKm, setConfirmLowKm] = useState(false);
 
   const totalCost = Number(form.labor_cost) + Number(form.parts_cost);
 
@@ -112,6 +113,7 @@ export default function MaintenanceForm({ vehicles, preselectedVehicleId, mainte
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
   ) {
     const { name, value } = e.target;
+    if (name === "km_at_service" || name === "vehicle_id") setConfirmLowKm(false);
     setForm((prev) => ({ ...prev, [name]: value }));
   }
 
@@ -164,11 +166,14 @@ export default function MaintenanceForm({ vehicles, preselectedVehicleId, mainte
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("No autenticado");
 
-      // Validar que el km no sea menor al registrado en el vehículo
-      if (form.vehicle_id && Number(form.km_at_service) > 0) {
+      // Avisar (no bloquear) si el km es menor al actual del vehículo: puede ser una mantención antigua
+      if (form.vehicle_id && Number(form.km_at_service) > 0 && !isEditing && !confirmLowKm) {
         const { data: veh } = await supabase.from("vehicles").select("current_km").eq("id", form.vehicle_id).single();
-        if (veh && Number(form.km_at_service) < veh.current_km && !isEditing) {
-          throw new Error(`El kilometraje ingresado (${Number(form.km_at_service).toLocaleString("es-CL")} km) es menor al registrado en el vehículo (${veh.current_km.toLocaleString("es-CL")} km). Verifica el valor.`);
+        if (veh && Number(form.km_at_service) < veh.current_km) {
+          setError(`El kilometraje ingresado (${Number(form.km_at_service).toLocaleString("es-CL")} km) es menor al actual del vehículo (${veh.current_km.toLocaleString("es-CL")} km). Si es una mantención antigua, presiona "Guardar" otra vez para confirmar.`);
+          setConfirmLowKm(true);
+          setLoading(false);
+          return;
         }
       }
 

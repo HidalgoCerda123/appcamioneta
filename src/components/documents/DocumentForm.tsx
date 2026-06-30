@@ -72,6 +72,7 @@ export default function DocumentForm({ vehicles, preselectedVehicleId, document 
   const [newFiles, setNewFiles] = useState<File[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [confirmLowKm, setConfirmLowKm] = useState(false);
 
   function handleTypeChange(e: React.ChangeEvent<HTMLSelectElement>) {
     const type = e.target.value;
@@ -82,6 +83,7 @@ export default function DocumentForm({ vehicles, preselectedVehicleId, document 
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
   ) {
     const { name, value } = e.target;
+    if (name === "km_at_renewal" || name === "vehicle_id") setConfirmLowKm(false);
     setForm((prev) => ({ ...prev, [name]: value }));
   }
 
@@ -116,11 +118,14 @@ export default function DocumentForm({ vehicles, preselectedVehicleId, document 
         throw new Error("La fecha de vencimiento debe ser posterior a la fecha de emisión.");
       }
 
-      // Validar que el km no sea menor al registrado en el vehículo
-      if (form.vehicle_id && form.km_at_renewal && Number(form.km_at_renewal) > 0) {
+      // Avisar (no bloquear) si el km es menor al actual: puede ser un documento antiguo
+      if (form.vehicle_id && form.km_at_renewal && Number(form.km_at_renewal) > 0 && !isEditing && !confirmLowKm) {
         const { data: veh } = await supabase.from("vehicles").select("current_km").eq("id", form.vehicle_id).single();
-        if (veh && Number(form.km_at_renewal) < veh.current_km && !isEditing) {
-          throw new Error(`El kilometraje ingresado (${Number(form.km_at_renewal).toLocaleString("es-CL")} km) es menor al registrado en el vehículo (${veh.current_km.toLocaleString("es-CL")} km). Verifica el valor.`);
+        if (veh && Number(form.km_at_renewal) < veh.current_km) {
+          setError(`El kilometraje ingresado (${Number(form.km_at_renewal).toLocaleString("es-CL")} km) es menor al actual del vehículo (${veh.current_km.toLocaleString("es-CL")} km). Si es un registro antiguo, presiona "Registrar" otra vez para confirmar.`);
+          setConfirmLowKm(true);
+          setLoading(false);
+          return;
         }
       }
 
