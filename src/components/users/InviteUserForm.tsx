@@ -11,6 +11,7 @@ export default function InviteUserForm({ customRoles: initialCustomRoles = [] }:
   const [customRoles, setCustomRoles] = useState<CustomRole[]>(initialCustomRoles);
   const [email, setEmail] = useState("");
   const [name, setName] = useState("");
+  const [password, setPassword] = useState("");
   const [role, setRole] = useState("viewer");
   const [customRoleId, setCustomRoleId] = useState("");
 
@@ -27,18 +28,27 @@ export default function InviteUserForm({ customRoles: initialCustomRoles = [] }:
     setLoading(true);
     setMessage(null);
 
+    if (password && password.length < 6) {
+      setMessage({ type: "error", text: "La contraseña debe tener al menos 6 caracteres." });
+      setLoading(false);
+      return;
+    }
+
     const res = await fetch("/api/invite", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, full_name: name, role, custom_role_id: customRoleId || null }),
+      body: JSON.stringify({ email, full_name: name, role, custom_role_id: customRoleId || null, password: password || undefined }),
     });
 
+    const data = await res.json();
     if (!res.ok) {
-      const data = await res.json();
-      setMessage({ type: "error", text: data.error ?? "Error al invitar usuario" });
+      setMessage({ type: "error", text: data.error ?? "Error al crear usuario" });
+    } else if (data.mode === "password") {
+      setMessage({ type: "success", text: `Usuario creado. Entrégale estas credenciales — correo: ${email} · contraseña: ${password}` });
+      setEmail(""); setName(""); setPassword(""); setRole("viewer"); setCustomRoleId("");
     } else {
       setMessage({ type: "success", text: `Invitación enviada a ${email}` });
-      setEmail(""); setName(""); setRole("viewer"); setCustomRoleId("");
+      setEmail(""); setName(""); setPassword(""); setRole("viewer"); setCustomRoleId("");
     }
 
     setLoading(false);
@@ -63,7 +73,17 @@ export default function InviteUserForm({ customRoles: initialCustomRoles = [] }:
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           required
-          placeholder="usuario@construserv.cl"
+          placeholder="usuario@empresa.cl"
+          className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-construserv-orange"
+        />
+      </div>
+      <div className="flex-1 min-w-40">
+        <label className="block text-xs font-medium text-gray-600 mb-1">Contraseña</label>
+        <input
+          type="text"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          placeholder="Mínimo 6 caracteres"
           className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-construserv-orange"
         />
       </div>
@@ -98,13 +118,16 @@ export default function InviteUserForm({ customRoles: initialCustomRoles = [] }:
         disabled={loading}
         className="bg-construserv-orange hover:bg-orange-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition disabled:opacity-60"
       >
-        {loading ? "Enviando..." : "Enviar Invitación"}
+        {loading ? "Creando..." : "Crear Usuario"}
       </button>
       {message && (
         <p className={`w-full text-sm ${message.type === "success" ? "text-green-600" : "text-red-600"}`}>
           {message.text}
         </p>
       )}
+      <p className="w-full text-xs text-gray-400">
+        Si pones una contraseña, el usuario entra de inmediato con su correo y esa clave. Si la dejas vacía, se le envía una invitación por correo.
+      </p>
     </form>
   );
 }

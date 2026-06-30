@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { Bell, BellOff, Truck } from "lucide-react";
+import { Bell, BellOff, Truck, KeyRound } from "lucide-react";
 import { formatDate } from "@/lib/utils";
 import UserNotifPrefs from "@/components/admin/UserNotifPrefs";
 import Link from "next/link";
@@ -62,6 +62,27 @@ export default function UsersTable({ profiles, currentUserId, customRoles: initi
   const [notifPrefs, setNotifPrefs] = useState<NotifPref[]>(initialNotifPrefs);
   const [openNotifFor, setOpenNotifFor] = useState<string | null>(null);
   const [saving, setSaving] = useState<string | null>(null);
+  const [pwFor, setPwFor] = useState<string | null>(null);
+  const [pwValue, setPwValue] = useState("");
+  const [pwSaving, setPwSaving] = useState(false);
+  const [pwMsg, setPwMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
+
+  async function handleSetPassword(userId: string) {
+    if (pwValue.length < 6) { setPwMsg({ type: "error", text: "Mínimo 6 caracteres." }); return; }
+    setPwSaving(true); setPwMsg(null);
+    const res = await fetch("/api/invite", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "set_password", user_id: userId, password: pwValue }),
+    });
+    const data = await res.json();
+    setPwSaving(false);
+    if (res.ok) {
+      setPwMsg({ type: "success", text: "Contraseña actualizada. Ya puede iniciar sesión con su correo y esta clave." });
+    } else {
+      setPwMsg({ type: "error", text: data.error ?? "Error al actualizar la contraseña." });
+    }
+  }
 
   // Obtener roles frescos desde el API (bypasa RLS)
   useEffect(() => {
@@ -142,7 +163,17 @@ export default function UsersTable({ profiles, currentUserId, customRoles: initi
                       </div>
                     </td>
 
-                    <td className="px-5 py-3 text-gray-600 text-xs">{p.email}</td>
+                    <td className="px-5 py-3 text-gray-600 text-xs">
+                      <div>{p.email}</div>
+                      {!isCurrentUser && (
+                        <button
+                          onClick={() => { setPwFor(pwFor === p.id ? null : p.id); setPwValue(""); setPwMsg(null); }}
+                          className="mt-1 inline-flex items-center gap-1 text-[11px] text-construserv-orange hover:underline"
+                        >
+                          <KeyRound className="w-3 h-3" /> Contraseña
+                        </button>
+                      )}
+                    </td>
 
                     {/* Rol unificado */}
                     <td className="px-5 py-3">
@@ -208,6 +239,46 @@ export default function UsersTable({ profiles, currentUserId, customRoles: initi
 
                     <td className="px-5 py-3 text-gray-500 text-xs">{formatDate(p.created_at)}</td>
                   </tr>
+
+                  {/* Panel establecer contraseña */}
+                  {pwFor === p.id && (
+                    <tr>
+                      <td colSpan={6} className="px-5 py-3 bg-gray-50">
+                        <div className="flex flex-wrap items-end gap-2">
+                          <div>
+                            <label className="block text-xs font-medium text-gray-600 mb-1">
+                              Nueva contraseña para {p.full_name}
+                            </label>
+                            <input
+                              type="text"
+                              value={pwValue}
+                              onChange={(e) => setPwValue(e.target.value)}
+                              placeholder="Mínimo 6 caracteres"
+                              className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-construserv-orange"
+                            />
+                          </div>
+                          <button
+                            onClick={() => handleSetPassword(p.id)}
+                            disabled={pwSaving}
+                            className="bg-construserv-orange text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-orange-600 transition disabled:opacity-50"
+                          >
+                            {pwSaving ? "Guardando..." : "Guardar contraseña"}
+                          </button>
+                          <button
+                            onClick={() => { setPwFor(null); setPwMsg(null); }}
+                            className="px-3 py-2 text-sm text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50 transition"
+                          >
+                            Cerrar
+                          </button>
+                          {pwMsg && (
+                            <span className={`text-sm ${pwMsg.type === "success" ? "text-green-600" : "text-red-600"}`}>
+                              {pwMsg.text}
+                            </span>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  )}
 
                   {/* Panel notificaciones inline */}
                   {openNotifFor === p.id && (
