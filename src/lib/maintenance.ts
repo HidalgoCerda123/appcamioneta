@@ -10,9 +10,15 @@ export interface KmServiceStatus {
   lead: number;
 }
 
-/** Estado de una mantención programada por km objetivo (next_service_km). */
-export function kmServiceStatus(nextKm: number, currentValue: number, unit: "km" | "horas"): KmServiceStatus {
-  const lead = unit === "horas" ? KM_SERVICE_LEAD.horas : KM_SERVICE_LEAD.km;
+/** Estado de una mantención programada por km objetivo (next_service_km).
+ *  leadConfig permite sobreescribir el margen de aviso (configurable por el admin). */
+export function kmServiceStatus(
+  nextKm: number,
+  currentValue: number,
+  unit: "km" | "horas",
+  leadConfig: { km: number; horas: number } = KM_SERVICE_LEAD
+): KmServiceStatus {
+  const lead = unit === "horas" ? leadConfig.horas : leadConfig.km;
   const remaining = nextKm - currentValue;
   return { due: remaining <= lead, overdue: remaining <= 0, remaining, lead };
 }

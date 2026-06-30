@@ -135,11 +135,15 @@ export default async function DashboardPage() {
       });
     }
     // Mantenciones programadas por km objetivo (next_service_km) — la más reciente por vehículo+tipo
-    const { data: maintKm } = await supabase
-      .from("maintenances")
-      .select("vehicle_id, type, next_service_km, vehicle:vehicles(id, brand, model, plate, current_km, usage_unit)")
-      .not("next_service_km", "is", null)
-      .order("date", { ascending: false });
+    const [{ data: maintKm }, { data: settings }] = await Promise.all([
+      supabase
+        .from("maintenances")
+        .select("vehicle_id, type, next_service_km, vehicle:vehicles(id, brand, model, plate, current_km, usage_unit)")
+        .not("next_service_km", "is", null)
+        .order("date", { ascending: false }),
+      supabase.from("app_settings").select("km_service_lead, hours_service_lead").eq("id", "global").maybeSingle(),
+    ]);
+    const lead = { km: settings?.km_service_lead ?? 200, horas: settings?.hours_service_lead ?? 20 };
 
     const seenKm = new Set<string>();
     for (const m of maintKm ?? []) {
@@ -149,7 +153,7 @@ export default async function DashboardPage() {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const v = m.vehicle as any;
       if (!v) continue;
-      const st = kmServiceStatus(m.next_service_km, v.current_km, v.usage_unit ?? "km");
+      const st = kmServiceStatus(m.next_service_km, v.current_km, v.usage_unit ?? "km", lead);
       if (!st.due) continue;
       const us = v.usage_unit === "horas" ? "h" : "km";
       preventiveDue.push({

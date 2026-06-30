@@ -270,10 +270,12 @@ export async function GET(req: NextRequest) {
 
   // Mantenciones programadas por km objetivo (next_service_km), la más reciente por vehículo+tipo
   {
-    const [{ data: vehRows2 }, { data: maintKmRows }] = await Promise.all([
+    const [{ data: vehRows2 }, { data: maintKmRows }, { data: settings }] = await Promise.all([
       supabase.from("vehicles").select("id, brand, model, plate, current_km, usage_unit"),
       supabase.from("maintenances").select("vehicle_id, type, next_service_km, date").not("next_service_km", "is", null).order("date", { ascending: false }),
+      supabase.from("app_settings").select("km_service_lead, hours_service_lead").eq("id", "global").maybeSingle(),
     ]);
+    const lead = { km: settings?.km_service_lead ?? 200, horas: settings?.hours_service_lead ?? 20 };
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const vmap: Record<string, any> = {};
     for (const v of vehRows2 ?? []) vmap[v.id] = v;
@@ -284,7 +286,7 @@ export async function GET(req: NextRequest) {
       seen.add(key);
       const veh = vmap[m.vehicle_id];
       if (!veh) continue;
-      const st = kmServiceStatus(m.next_service_km, veh.current_km, veh.usage_unit ?? "km");
+      const st = kmServiceStatus(m.next_service_km, veh.current_km, veh.usage_unit ?? "km", lead);
       if (!st.due) continue;
       const us = veh.usage_unit === "horas" ? "h" : "km";
       preventiveAdmin.push({
