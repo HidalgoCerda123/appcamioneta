@@ -1,4 +1,4 @@
-// Service Worker ConstruservAPP — cachea el shell para abrir sin señal.
+// Service Worker Flotapp — cachea el shell para abrir sin señal.
 const CACHE = "construserv-v2";
 const ASSETS = [
   "/dashboard",

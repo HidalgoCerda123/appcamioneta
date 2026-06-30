@@ -59,10 +59,10 @@ export async function POST(req: Request) {
     ${fault.description ? `<p style="margin:0 0 16px;color:#374151;font-size:14px;">${fault.description}</p>` : ""}
     ${fault.driver_name ? `<p style="margin:0 0 16px;color:#6b7280;font-size:13px;">Reportada por: <strong>${fault.driver_name}</strong></p>` : ""}
     ${photos.length > 0 ? `<div style="margin:0 0 16px;">${photos.map((u) => `<a href="${u}"><img src="${u}" alt="" style="width:120px;height:90px;object-fit:cover;border-radius:8px;border:1px solid #e5e7eb;margin:0 6px 6px 0;" /></a>`).join("")}</div>` : ""}
-    <a href="${APP_URL}/dashboard/fallas" style="display:inline-block;background:#E8500A;color:white;text-decoration:none;padding:12px 24px;border-radius:10px;font-size:15px;font-weight:bold;">Ver en ConstruservAPP</a>
+    <a href="${APP_URL}/dashboard/fallas" style="display:inline-block;background:#E8500A;color:white;text-decoration:none;padding:12px 24px;border-radius:10px;font-size:15px;font-weight:bold;">Ver en Flotapp</a>
   </div>
   <div style="background:#f9fafb;padding:16px 32px;text-align:center;border-top:1px solid #e5e7eb;">
-    <p style="margin:0;color:#9ca3af;font-size:12px;">Construserv Ltda. — Sistema de Gestión de Flota</p>
+    <p style="margin:0;color:#9ca3af;font-size:12px;">Pares y Alvarez — Sistema de Gestión de Flota</p>
   </div>
 </div></body></html>`;
 

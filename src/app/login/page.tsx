@@ -59,7 +59,7 @@ export default function LoginPage() {
           <div className="inline-flex items-center justify-center w-16 h-16 bg-construserv-orange rounded-2xl mb-4">
             <Wrench className="w-8 h-8 text-white" />
           </div>
-          <h1 className="text-3xl font-bold text-white">ConstruservAPP</h1>
+          <h1 className="text-3xl font-bold text-white">Flotapp</h1>
           <p className="text-gray-400 mt-1">Gestión de Flota y Mantenciones</p>
         </div>
 
@@ -137,7 +137,7 @@ export default function LoginPage() {
         </div>
 
         <p className="text-center text-gray-500 text-sm mt-6">
-          Construserv Ltda. &copy; {new Date().getFullYear()}
+          Pares y Alvarez &copy; {new Date().getFullYear()}
         </p>
       </div>
     </div>

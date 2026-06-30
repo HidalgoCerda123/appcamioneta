@@ -40,7 +40,7 @@ export default function UpdatePasswordPage() {
     <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8 w-full max-w-sm">
         <div className="flex justify-center mb-6">
-          <img src="/Logo construserv.jpg" alt="Construserv" className="h-16 w-auto object-contain" />
+          <img src="/Logo construserv.jpg" alt="Pares y Alvarez" className="h-16 w-auto object-contain" />
         </div>
         <h1 className="text-xl font-bold text-gray-900 mb-1 text-center">Nueva contraseña</h1>
         <p className="text-sm text-gray-500 text-center mb-6">Ingresa tu nueva contraseña</p>

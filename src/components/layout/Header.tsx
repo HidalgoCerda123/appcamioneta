@@ -24,13 +24,13 @@ export default function Header({ profile, alertCount = 0 }: { profile: Profile |
   const title =
     Object.entries(pageTitles)
       .reverse()
-      .find(([key]) => pathname.startsWith(key))?.[1] ?? "ConstruservAPP";
+      .find(([key]) => pathname.startsWith(key))?.[1] ?? "Flotapp";
 
   return (
     <header className="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 px-4 md:px-6 py-3 md:py-4 flex items-center justify-between">
       {/* Mobile: logo + título de página */}
       <div className="md:hidden flex items-center gap-3">
-        <img src="/Logo construserv.jpg" alt="Construserv" className="h-8 w-auto object-contain" />
+        <img src="/Logo construserv.jpg" alt="Pares y Alvarez" className="h-8 w-auto object-contain" />
         <span className="font-semibold text-gray-800 dark:text-gray-100 text-base">{title}</span>
       </div>
 

@@ -128,7 +128,7 @@ export async function POST(req: Request) {
 <body style="margin:0;padding:0;background:#f9fafb;font-family:Arial,sans-serif;">
 <div style="max-width:700px;margin:32px auto;background:#fff;border-radius:12px;overflow:hidden;border:1px solid #e5e7eb;">
   <div style="background:#1A1A2E;padding:24px 32px;">
-    <p style="margin:0;color:white;font-size:20px;font-weight:bold;">🔔 ConstruservAPP</p>
+    <p style="margin:0;color:white;font-size:20px;font-weight:bold;">🔔 Flotapp</p>
     <p style="margin:4px 0 0;color:#9ca3af;font-size:13px;">Resumen completo de la flota — ${new Date().toLocaleDateString("es-CL", { dateStyle: "long" })}</p>
   </div>
   <div style="padding:32px;">
@@ -149,11 +149,11 @@ export async function POST(req: Request) {
       <thead><tr><th style="${thStyle}">Tipo</th><th style="${thStyle}">Vehículo</th><th style="${thStyle}">Fecha</th><th style="${thStyle}">Conductor</th><th style="${thStyle}">Estado</th></tr></thead>
       <tbody>${maintRows}</tbody></table></div>` : ""}
     <div style="background:#fff7ed;border:1px solid #fed7aa;border-radius:8px;padding:16px;">
-      <p style="margin:0;color:#9a3412;font-size:13px;">Ingresa a <strong>ConstruservAPP</strong> para gestionar estas alertas.</p>
+      <p style="margin:0;color:#9a3412;font-size:13px;">Ingresa a <strong>Flotapp</strong> para gestionar estas alertas.</p>
     </div>
   </div>
   <div style="background:#f9fafb;padding:16px 32px;text-align:center;border-top:1px solid #e5e7eb;">
-    <p style="margin:0;color:#9ca3af;font-size:12px;">Construserv Ltda. — Sistema de Gestión de Flota</p>
+    <p style="margin:0;color:#9ca3af;font-size:12px;">Pares y Alvarez — Sistema de Gestión de Flota</p>
   </div>
 </div></body></html>`;
 
@@ -162,7 +162,7 @@ export async function POST(req: Request) {
     const { error } = await resend.emails.send({
       from: process.env.RESEND_FROM!,
       to: config.email,
-      subject: `🔔 [PRUEBA] ConstruservAPP — ${total} alerta(s) de la flota`,
+      subject: `🔔 [PRUEBA] Flotapp — ${total} alerta(s) de la flota`,
       html,
     });
     if (!error) sent++;

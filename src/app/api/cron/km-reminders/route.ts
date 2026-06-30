@@ -48,7 +48,7 @@ function driverReminderHtml(driverName: string, vehicleLabel: string, unit: "km"
 <body style="margin:0;padding:0;background:#f9fafb;font-family:Arial,sans-serif;">
 <div style="max-width:520px;margin:32px auto;background:#fff;border-radius:12px;overflow:hidden;border:1px solid #e5e7eb;">
   <div style="background:#1A1A2E;padding:24px 32px;">
-    <p style="margin:0;color:white;font-size:20px;font-weight:bold;">🚛 ConstruservAPP</p>
+    <p style="margin:0;color:white;font-size:20px;font-weight:bold;">🚛 Flotapp</p>
   </div>
   <div style="padding:32px;text-align:center;">
     <p style="margin:0 0 8px;color:#374151;font-size:16px;">Hola <strong>${driverName}</strong>,</p>
@@ -65,7 +65,7 @@ function driverReminderHtml(driverName: string, vehicleLabel: string, unit: "km"
     </p>
   </div>
   <div style="background:#f9fafb;padding:16px 32px;text-align:center;border-top:1px solid #e5e7eb;">
-    <p style="margin:0;color:#9ca3af;font-size:12px;">Construserv Ltda. — Sistema de Gestión de Flota</p>
+    <p style="margin:0;color:#9ca3af;font-size:12px;">Pares y Alvarez — Sistema de Gestión de Flota</p>
   </div>
 </div></body></html>`;
 }
@@ -83,7 +83,7 @@ function adminDigestHtml(rows: { driver: string; vehicle: string; days: number |
 <body style="margin:0;padding:0;background:#f9fafb;font-family:Arial,sans-serif;">
 <div style="max-width:640px;margin:32px auto;background:#fff;border-radius:12px;overflow:hidden;border:1px solid #e5e7eb;">
   <div style="background:#1A1A2E;padding:24px 32px;">
-    <p style="margin:0;color:white;font-size:20px;font-weight:bold;">🔔 ConstruservAPP</p>
+    <p style="margin:0;color:white;font-size:20px;font-weight:bold;">🔔 Flotapp</p>
     <p style="margin:4px 0 0;color:#9ca3af;font-size:13px;">Conductores con kilometraje atrasado</p>
   </div>
   <div style="padding:32px;">
@@ -105,7 +105,7 @@ function adminDigestHtml(rows: { driver: string; vehicle: string; days: number |
     </div>
   </div>
   <div style="background:#f9fafb;padding:16px 32px;text-align:center;border-top:1px solid #e5e7eb;">
-    <p style="margin:0;color:#9ca3af;font-size:12px;">Construserv Ltda. — Sistema de Gestión de Flota</p>
+    <p style="margin:0;color:#9ca3af;font-size:12px;">Pares y Alvarez — Sistema de Gestión de Flota</p>
   </div>
 </div></body></html>`;
 }

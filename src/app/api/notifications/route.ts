@@ -112,7 +112,7 @@ export async function POST(req: NextRequest) {
         <span style="color:white;font-size:20px;">🔔</span>
       </div>
       <div>
-        <p style="margin:0;color:white;font-size:18px;font-weight:bold;">ConstruservAPP</p>
+        <p style="margin:0;color:white;font-size:18px;font-weight:bold;">Flotapp</p>
         <p style="margin:0;color:#9ca3af;font-size:13px;">Alertas de vencimiento</p>
       </div>
     </div>
@@ -152,13 +152,13 @@ export async function POST(req: NextRequest) {
 
       <div style="background:#fff7ed;border:1px solid #fed7aa;border-radius:8px;padding:16px;margin-top:8px;">
         <p style="margin:0;color:#9a3412;font-size:13px;">
-          Ingresa a <strong>ConstruservAPP</strong> para gestionar estos documentos y mantener tu flota al día.
+          Ingresa a <strong>Flotapp</strong> para gestionar estos documentos y mantener tu flota al día.
         </p>
       </div>
     </div>
 
     <div style="background:#f9fafb;padding:16px 32px;text-align:center;border-top:1px solid #e5e7eb;">
-      <p style="margin:0;color:#9ca3af;font-size:12px;">Construserv Ltda. — Sistema de Gestión de Flota</p>
+      <p style="margin:0;color:#9ca3af;font-size:12px;">Pares y Alvarez — Sistema de Gestión de Flota</p>
     </div>
   </div>
 </body>
@@ -167,7 +167,7 @@ export async function POST(req: NextRequest) {
   const { error } = await resend.emails.send({
     from: process.env.RESEND_FROM!,
     to: config.email_to,
-    subject: `🔔 ConstruservAPP — ${alertDocs.length + alertDrivers.length} alerta(s) de vencimiento`,
+    subject: `🔔 Flotapp — ${alertDocs.length + alertDrivers.length} alerta(s) de vencimiento`,
     html,
   });
 

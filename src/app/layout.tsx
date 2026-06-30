@@ -7,10 +7,10 @@ const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
   title: {
-    default: "ConstruservAPP",
-    template: "%s | ConstruservAPP",
+    default: "Flotapp",
+    template: "%s | Flotapp",
   },
-  description: "Sistema de gestión de flota y mantenciones para Construserv Ltda.",
+  description: "Sistema de gestión de flota y mantenciones para Pares y Alvarez",
   manifest: "/manifest.json",
 };
 

@@ -1,5 +1,5 @@
 -- ============================================================
--- ConstruservAPP — Esquema de Base de Datos
+-- Flotapp — Esquema de Base de Datos
 -- Ejecutar en: Supabase → SQL Editor
 -- ============================================================
 

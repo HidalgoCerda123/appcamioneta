@@ -121,10 +121,10 @@ export default async function MonthlyReportPage({
         <div className={`${card} p-6 flex items-center justify-between`}>
           <div>
             <h1 className="text-2xl font-bold text-gray-900">Informe Mensual de Flota</h1>
-            <p className="text-gray-500 mt-1">{MONTHS[month - 1]} {year} — Construserv Ltda.</p>
+            <p className="text-gray-500 mt-1">{MONTHS[month - 1]} {year} — Pares y Alvarez</p>
           </div>
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/Logo construserv.jpg" alt="Construserv" className="h-14 w-auto object-contain" />
+          <img src="/Logo construserv.jpg" alt="Pares y Alvarez" className="h-14 w-auto object-contain" />
         </div>
 
         {/* Resumen */}
@@ -222,7 +222,7 @@ export default async function MonthlyReportPage({
         )}
 
         <p className="text-center text-xs text-gray-400 pt-2">
-          Generado por ConstruservAPP el {formatDate(new Date().toISOString())} · Construserv Ltda. — Sistema de Gestión de Flota
+          Generado por Flotapp el {formatDate(new Date().toISOString())} · Pares y Alvarez — Sistema de Gestión de Flota
         </p>
       </div>
     </div>

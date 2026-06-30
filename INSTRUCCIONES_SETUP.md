@@ -1,4 +1,4 @@
-# ConstruservAPP — Instrucciones de Configuración
+# Flotapp — Instrucciones de Configuración
 
 ## PASO 1 — Instalar Node.js
 1. Ir a nodejs.org

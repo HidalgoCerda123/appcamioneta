@@ -1,7 +1,7 @@
 {
-  "name": "ConstruservAPP",
-  "short_name": "Construserv",
-  "description": "Gestión de Flota y Mantenciones - Construserv Ltda.",
+  "name": "Flotapp",
+  "short_name": "Flotapp",
+  "description": "Gestión de Flota y Mantenciones - Pares y Alvarez",
   "start_url": "/dashboard",
   "display": "standalone",
   "background_color": "#1A1A2E",
