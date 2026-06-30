@@ -1,5 +1,22 @@
 import { addDays, daysUntilDate } from "./date";
 
+// Margen de anticipación para avisar una mantención por kilometraje/horas
+export const KM_SERVICE_LEAD = { km: 200, horas: 20 } as const;
+
+export interface KmServiceStatus {
+  due: boolean;      // dentro del margen de aviso o ya pasado
+  overdue: boolean;  // ya se alcanzó/superó el km objetivo
+  remaining: number; // km/horas que faltan (negativo = pasado)
+  lead: number;
+}
+
+/** Estado de una mantención programada por km objetivo (next_service_km). */
+export function kmServiceStatus(nextKm: number, currentValue: number, unit: "km" | "horas"): KmServiceStatus {
+  const lead = unit === "horas" ? KM_SERVICE_LEAD.horas : KM_SERVICE_LEAD.km;
+  const remaining = nextKm - currentValue;
+  return { due: remaining <= lead, overdue: remaining <= 0, remaining, lead };
+}
+
 export interface MaintenancePlan {
   id: string;
   vehicle_id: string;

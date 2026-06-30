@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { Resend } from "resend";
-import { computePlanStatus, type MaintenancePlan } from "@/lib/maintenance";
+import { computePlanStatus, kmServiceStatus, type MaintenancePlan } from "@/lib/maintenance";
 
 const MAINT_LABELS: Record<string, string> = {
   aceite: "Aceite", frenos: "Frenos", neumaticos: "Neumáticos", filtros: "Filtros",
@@ -263,6 +263,37 @@ export async function GET(req: NextRequest) {
         vehicle: `${veh.brand} ${veh.model} (${veh.plate})`,
         detail: parts.join(" · "),
         overdue: st.level === "overdue",
+      });
+    }
+    preventiveAdmin.sort((a, b) => (a.overdue === b.overdue ? 0 : a.overdue ? -1 : 1));
+  }
+
+  // Mantenciones programadas por km objetivo (next_service_km), la más reciente por vehículo+tipo
+  {
+    const [{ data: vehRows2 }, { data: maintKmRows }] = await Promise.all([
+      supabase.from("vehicles").select("id, brand, model, plate, current_km, usage_unit"),
+      supabase.from("maintenances").select("vehicle_id, type, next_service_km, date").not("next_service_km", "is", null).order("date", { ascending: false }),
+    ]);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const vmap: Record<string, any> = {};
+    for (const v of vehRows2 ?? []) vmap[v.id] = v;
+    const seen = new Set<string>();
+    for (const m of maintKmRows ?? []) {
+      const key = `${m.vehicle_id}|${m.type}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      const veh = vmap[m.vehicle_id];
+      if (!veh) continue;
+      const st = kmServiceStatus(m.next_service_km, veh.current_km, veh.usage_unit ?? "km");
+      if (!st.due) continue;
+      const us = veh.usage_unit === "horas" ? "h" : "km";
+      preventiveAdmin.push({
+        label: `${MAINT_LABELS[m.type] ?? m.type} (por ${us})`,
+        vehicle: `${veh.brand} ${veh.model} (${veh.plate})`,
+        detail: st.overdue
+          ? `Vencida por ${Math.abs(st.remaining).toLocaleString("es-CL")} ${us}`
+          : `Faltan ${st.remaining.toLocaleString("es-CL")} ${us}`,
+        overdue: st.overdue,
       });
     }
     preventiveAdmin.sort((a, b) => (a.overdue === b.overdue ? 0 : a.overdue ? -1 : 1));

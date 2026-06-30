@@ -2,7 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { Truck, Wrench, FileWarning, AlertTriangle, CheckCircle, UserCheck, XCircle, Gauge, CalendarClock } from "lucide-react";
 import { formatCurrency, formatDate, getDaysUntil, getAlertColor } from "@/lib/utils";
 import { daysSince } from "@/lib/date";
-import { computePlanStatus, type MaintenancePlan as MaintenancePlanType } from "@/lib/maintenance";
+import { computePlanStatus, kmServiceStatus, type MaintenancePlan as MaintenancePlanType } from "@/lib/maintenance";
 import Link from "next/link";
 import type { VehicleDocument } from "@/types";
 
@@ -134,6 +134,35 @@ export default async function DashboardPage() {
         detail: parts.join(" · "),
       });
     }
+    // Mantenciones programadas por km objetivo (next_service_km) — la más reciente por vehículo+tipo
+    const { data: maintKm } = await supabase
+      .from("maintenances")
+      .select("vehicle_id, type, next_service_km, vehicle:vehicles(id, brand, model, plate, current_km, usage_unit)")
+      .not("next_service_km", "is", null)
+      .order("date", { ascending: false });
+
+    const seenKm = new Set<string>();
+    for (const m of maintKm ?? []) {
+      const key = `${m.vehicle_id}|${m.type}`;
+      if (seenKm.has(key)) continue;
+      seenKm.add(key);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const v = m.vehicle as any;
+      if (!v) continue;
+      const st = kmServiceStatus(m.next_service_km, v.current_km, v.usage_unit ?? "km");
+      if (!st.due) continue;
+      const us = v.usage_unit === "horas" ? "h" : "km";
+      preventiveDue.push({
+        vehicleId: v.id,
+        vehicle: `${v.brand} ${v.model} (${v.plate})`,
+        type: m.type,
+        level: st.overdue ? "overdue" : "soon",
+        detail: st.overdue
+          ? `vencida por ${Math.abs(st.remaining).toLocaleString("es-CL")} ${us} (objetivo ${m.next_service_km.toLocaleString("es-CL")} ${us})`
+          : `faltan ${st.remaining.toLocaleString("es-CL")} ${us} (objetivo ${m.next_service_km.toLocaleString("es-CL")} ${us})`,
+      });
+    }
+
     preventiveDue.sort((a, b) => (a.level === b.level ? 0 : a.level === "overdue" ? -1 : 1));
   }
 
@@ -300,7 +329,7 @@ export default async function DashboardPage() {
           <div className="p-5 border-b border-orange-100 flex items-center justify-between">
             <h3 className="font-semibold text-gray-800 flex items-center gap-2">
               <CalendarClock className="w-4 h-4 text-construserv-orange" />
-              Mantenciones Preventivas por Vencer
+              Mantenciones por Vencer
             </h3>
             <span className="text-xs font-semibold bg-orange-100 text-orange-700 px-2.5 py-1 rounded-full">
               {preventiveDue.length}
