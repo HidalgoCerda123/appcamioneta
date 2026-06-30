@@ -75,7 +75,11 @@ export default async function DashboardLayout({
     <div className="flex h-screen bg-gray-50 dark:bg-gray-950 overflow-hidden">
       <Sidebar profile={profile} />
       <div className="flex-1 flex flex-col overflow-hidden">
-        <Header profile={profile} alertCount={alertCount} />
+        <Header
+          profile={profile}
+          alertCount={alertCount}
+          alerts={{ docs: docsCount ?? 0, licenses: licCount ?? 0, maintenances: maintCount ?? 0 }}
+        />
         <main className="flex-1 overflow-y-auto p-4 md:p-6 pb-20 md:pb-6">
           {children}
         </main>
