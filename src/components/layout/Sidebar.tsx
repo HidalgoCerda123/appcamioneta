@@ -18,6 +18,7 @@ import {
   AlertTriangle,
   ClipboardCheck,
   Building2,
+  Fuel,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/client";
@@ -30,6 +31,7 @@ const navItems = [
   { href: "/dashboard/obras", label: "Obras", icon: Building2 },
   { href: "/dashboard/conductores", label: "Conductores", icon: HardHat },
   { href: "/dashboard/mantenciones", label: "Mantenciones", icon: Wrench },
+  { href: "/dashboard/combustible", label: "Combustible", icon: Fuel },
   { href: "/dashboard/fallas", label: "Fallas", icon: AlertTriangle },
   { href: "/dashboard/documentos", label: "Documentos", icon: FileText },
   { href: "/dashboard/inspeccion", label: "Inspección", icon: ClipboardCheck },

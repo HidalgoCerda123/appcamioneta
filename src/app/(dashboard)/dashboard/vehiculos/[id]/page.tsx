@@ -1,7 +1,8 @@
 import { createClient } from "@/lib/supabase/server";
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, Truck, Gauge, Wrench, FileText, Pencil, Clock, ClipboardCheck } from "lucide-react";
+import { ArrowLeft, Truck, Gauge, Wrench, FileText, Pencil, Clock, ClipboardCheck, Fuel, Plus } from "lucide-react";
+import { fuelMetrics } from "@/lib/fuel";
 import DeleteButton from "@/components/ui/DeleteButton";
 import { formatCurrency, formatDate, formatUsage, getDaysUntil, getAlertColor } from "@/lib/utils";
 import DriverSection from "@/components/vehicles/DriverSection";
@@ -72,6 +73,13 @@ export default async function VehicleDetailPage({
     .limit(1)
     .maybeSingle();
   const currentProject = (projAssign?.project as unknown as { id: string; name: string } | null) ?? null;
+
+  // Combustible del vehículo
+  const [{ data: fuelSummary }, { data: fuelLoads }] = await Promise.all([
+    supabase.from("fuel_summary").select("*").eq("vehicle_id", id).maybeSingle(),
+    supabase.from("fuel_loads").select("id, fuel_date, liters, total_cost, km_at_load, station").eq("vehicle_id", id).order("fuel_date", { ascending: false }).limit(8),
+  ]);
+  const fuel = fuelMetrics(fuelSummary ?? null, vehicle.usage_unit);
 
   let canEditPlans = false;
   let isAdmin = false;
@@ -258,6 +266,60 @@ export default async function VehicleDetailPage({
         lastByType={lastByType}
         canEdit={canEditPlans}
       />
+
+      {/* Combustible */}
+      <div className="bg-white rounded-xl border border-gray-100 shadow-sm">
+        <div className="p-5 border-b border-gray-100 flex items-center justify-between">
+          <h3 className="font-semibold text-gray-800 flex items-center gap-2">
+            <Fuel className="w-4 h-4 text-construserv-orange" />
+            Combustible
+          </h3>
+          <Link href={`/dashboard/combustible/nueva`} className="flex items-center gap-1.5 text-construserv-orange text-sm font-medium hover:underline">
+            <Plus className="w-4 h-4" /> Registrar carga
+          </Link>
+        </div>
+        <div className="p-5 space-y-4">
+          {fuel ? (
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              <div>
+                <p className="text-xs text-gray-400 uppercase tracking-wide">Gasto total</p>
+                <p className="font-bold text-gray-900 mt-0.5">{formatCurrency(fuel.cost)}</p>
+              </div>
+              <div>
+                <p className="text-xs text-gray-400 uppercase tracking-wide">Litros</p>
+                <p className="font-semibold text-gray-800 mt-0.5">{fuel.liters.toLocaleString("es-CL")} L</p>
+              </div>
+              <div>
+                <p className="text-xs text-gray-400 uppercase tracking-wide">Costo por {unitShort}</p>
+                <p className="font-semibold text-construserv-orange mt-0.5">{fuel.costPerUnit !== null ? `${formatCurrency(fuel.costPerUnit)}/${unitShort}` : "—"}</p>
+              </div>
+              <div>
+                <p className="text-xs text-gray-400 uppercase tracking-wide">Rendimiento</p>
+                <p className="font-semibold text-gray-800 mt-0.5">{fuel.efficiency !== null ? `${fuel.efficiency} ${fuel.efficiencyLabel}` : "—"}</p>
+              </div>
+            </div>
+          ) : (
+            <p className="text-sm text-gray-400 text-center py-2">Sin cargas registradas. Registra cargas con su kilometraje para medir el gasto por {unitShort}.</p>
+          )}
+
+          {fuelLoads && fuelLoads.length > 0 && (
+            <div>
+              <p className="text-xs text-gray-400 uppercase tracking-wide mb-2">Cargas recientes</p>
+              <div className="divide-y divide-gray-50">
+                {fuelLoads.map((l) => (
+                  <div key={l.id} className="py-2 flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium text-gray-800">{Number(l.liters).toLocaleString("es-CL")} L{l.km_at_load ? ` · ${l.km_at_load.toLocaleString("es-CL")} ${unitShort}` : ""}</p>
+                      <p className="text-xs text-gray-400">{formatDate(l.fuel_date)}{l.station ? ` · ${l.station}` : ""}</p>
+                    </div>
+                    <span className="text-sm font-semibold text-gray-800">{formatCurrency(l.total_cost)}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
 
       {/* Conductor */}
       <DriverSection vehicleId={id} vehicleStatus={vehicle.status} drivers={drivers ?? []} />

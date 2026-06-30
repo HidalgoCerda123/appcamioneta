@@ -20,6 +20,7 @@ import {
   Gauge,
   ClipboardCheck,
   Building2,
+  Fuel,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useState } from "react";
@@ -35,6 +36,7 @@ const mainItems = [
 ];
 
 const moreItems = [
+  { href: "/dashboard/combustible", label: "Combustible", icon: Fuel },
   { href: "/dashboard/obras", label: "Obras", icon: Building2 },
   { href: "/dashboard/registrar-km", label: "Registrar Km", icon: Gauge },
   { href: "/dashboard/inspeccion", label: "Inspección", icon: ClipboardCheck },
