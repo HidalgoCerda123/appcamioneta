@@ -16,14 +16,14 @@ interface Vehicle {
 
 interface Props {
   vehicles: Vehicle[];
-  fixedVehicleId?: string;
+  defaultVehicleId?: string;
   driverName?: string | null;
 }
 
-export default function FuelLoadForm({ vehicles, fixedVehicleId, driverName }: Props) {
+export default function FuelLoadForm({ vehicles, defaultVehicleId, driverName }: Props) {
   const router = useRouter();
   const supabase = createClient();
-  const [vehicleId, setVehicleId] = useState(fixedVehicleId ?? "");
+  const [vehicleId, setVehicleId] = useState(defaultVehicleId ?? "");
   const [form, setForm] = useState({
     fuel_date: new Date().toISOString().split("T")[0],
     liters: "",
@@ -99,15 +99,13 @@ export default function FuelLoadForm({ vehicles, fixedVehicleId, driverName }: P
       {error && <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-4 py-3">{error}</div>}
 
       <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-6 grid grid-cols-1 sm:grid-cols-2 gap-4">
-        {!fixedVehicleId && (
-          <div className="sm:col-span-2">
-            <label className={label}>Vehículo *</label>
-            <select value={vehicleId} onChange={(e) => setVehicleId(e.target.value)} className={input}>
-              <option value="">Selecciona...</option>
-              {vehicles.map((v) => <option key={v.id} value={v.id}>{v.brand} {v.model} — {v.plate}</option>)}
-            </select>
-          </div>
-        )}
+        <div className="sm:col-span-2">
+          <label className={label}>Vehículo *</label>
+          <select value={vehicleId} onChange={(e) => setVehicleId(e.target.value)} className={input}>
+            <option value="">Selecciona un vehículo...</option>
+            {vehicles.map((v) => <option key={v.id} value={v.id}>{v.brand} {v.model} — {v.plate}</option>)}
+          </select>
+        </div>
         <div>
           <label className={label}>Fecha *</label>
           <input type="date" value={form.fuel_date} onChange={(e) => set("fuel_date", e.target.value)} className={input} />

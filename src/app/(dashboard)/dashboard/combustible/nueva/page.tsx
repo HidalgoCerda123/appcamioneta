@@ -20,19 +20,17 @@ export default async function NewFuelPage() {
     .limit(1)
     .maybeSingle();
 
-  let fixedVehicleId: string | undefined;
-  let driverName: string | null = null;
-  let vehicles: { id: string; plate: string; brand: string; model: string; current_km?: number; usage_unit?: "km" | "horas" }[] = [];
+  // Siempre cargar todos los vehículos para poder elegir cualquiera.
+  // Si el usuario es conductor, su vehículo queda preseleccionado (pero se puede cambiar).
+  const { data: vehiclesData } = await supabase
+    .from("vehicles")
+    .select("id, plate, brand, model, current_km, usage_unit")
+    .order("brand");
+  const vehicles = vehiclesData ?? [];
 
-  if (assignment?.vehicle) {
-    const veh = assignment.vehicle as unknown as { id: string; plate: string; brand: string; model: string; current_km: number; usage_unit: "km" | "horas" };
-    fixedVehicleId = veh.id;
-    driverName = assignment.driver_name ?? null;
-    vehicles = [veh];
-  } else {
-    const { data } = await supabase.from("vehicles").select("id, plate, brand, model, current_km, usage_unit").order("brand");
-    vehicles = data ?? [];
-  }
+  const assignedVeh = assignment?.vehicle as unknown as { id: string } | null;
+  const defaultVehicleId: string | undefined = assignedVeh?.id;
+  const driverName: string | null = assignment?.driver_name ?? null;
 
   return (
     <div className="max-w-2xl mx-auto">
@@ -45,7 +43,7 @@ export default async function NewFuelPage() {
           <p className="text-gray-500 text-sm mt-0.5">Anota cada carga con su kilometraje para medir el gasto por km</p>
         </div>
       </div>
-      <FuelLoadForm vehicles={vehicles} fixedVehicleId={fixedVehicleId} driverName={driverName} />
+      <FuelLoadForm vehicles={vehicles} defaultVehicleId={defaultVehicleId} driverName={driverName} />
     </div>
   );
 }
