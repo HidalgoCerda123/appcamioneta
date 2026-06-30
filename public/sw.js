@@ -1,10 +1,11 @@
 // Service Worker Flotapp — cachea el shell para abrir sin señal.
-const CACHE = "flotapp-v1";
+const CACHE = "flotapp-v3";
 const ASSETS = [
   "/dashboard",
   "/dashboard/registrar-km",
   "/dashboard/inspeccion",
   "/dashboard/fallas/nueva",
+  "/dashboard/combustible/nueva",
   "/manifest.json",
   "/icon-192.png",
   "/icon-512.png",
