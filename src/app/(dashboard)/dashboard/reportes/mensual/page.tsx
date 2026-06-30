@@ -37,7 +37,7 @@ export default async function MonthlyReportPage({
 
   const [
     { data: maints }, { data: docs }, { data: faults }, { data: inspections },
-    { data: assignments }, { data: projects },
+    { data: assignments }, { data: projects }, { data: fuelLoads },
   ] = await Promise.all([
     supabase.from("maintenances").select("*, vehicle:vehicles(brand, model, plate)").gte("date", first).lte("date", last),
     supabase.from("vehicle_documents").select("*, vehicle:vehicles(brand, model, plate)").gte("issue_date", first).lte("issue_date", last),
@@ -45,30 +45,37 @@ export default async function MonthlyReportPage({
     supabase.from("inspections").select("id, has_issues, inspection_date").gte("inspection_date", first).lte("inspection_date", last),
     supabase.from("project_vehicles").select("project_id, vehicle_id, start_date, end_date"),
     supabase.from("projects").select("id, name"),
+    supabase.from("fuel_loads").select("vehicle_id, total_cost, fuel_date, vehicle:vehicles(brand, model, plate)").gte("fuel_date", first).lte("fuel_date", last),
   ]);
 
   const maintCost = (maints ?? []).reduce((s, m) => s + (m.total_cost ?? 0), 0);
   const docCost = (docs ?? []).reduce((s, d) => s + (d.amount_paid ?? 0), 0);
-  const totalCost = maintCost + docCost;
+  const fuelCost = (fuelLoads ?? []).reduce((s, f) => s + (f.total_cost ?? 0), 0);
+  const totalCost = maintCost + docCost + fuelCost;
 
-  // Top vehículos del mes
-  const byVehicle: Record<string, { name: string; cost: number }> = {};
+  // Gastos por vehículo del mes (desglosado por categoría)
+  const byVehicle: Record<string, { name: string; maint: number; docs: number; fuel: number; total: number }> = {};
+  function ensureVeh(key: string, v: { brand: string; model: string; plate: string } | null) {
+    if (!byVehicle[key]) byVehicle[key] = { name: v ? `${v.brand} ${v.model} (${v.plate})` : "—", maint: 0, docs: 0, fuel: 0, total: 0 };
+    return byVehicle[key];
+  }
   for (const m of maints ?? []) {
-    const v = m.vehicle as { brand: string; model: string; plate: string } | null;
-    const key = m.vehicle_id;
-    if (!byVehicle[key]) byVehicle[key] = { name: v ? `${v.brand} ${v.model} (${v.plate})` : "—", cost: 0 };
-    byVehicle[key].cost += m.total_cost ?? 0;
+    const r = ensureVeh(m.vehicle_id, m.vehicle as { brand: string; model: string; plate: string } | null);
+    r.maint += m.total_cost ?? 0; r.total += m.total_cost ?? 0;
   }
   for (const d of docs ?? []) {
     if (!d.amount_paid) continue;
-    const v = d.vehicle as { brand: string; model: string; plate: string } | null;
-    const key = d.vehicle_id;
-    if (!byVehicle[key]) byVehicle[key] = { name: v ? `${v.brand} ${v.model} (${v.plate})` : "—", cost: 0 };
-    byVehicle[key].cost += d.amount_paid;
+    const r = ensureVeh(d.vehicle_id, d.vehicle as { brand: string; model: string; plate: string } | null);
+    r.docs += d.amount_paid; r.total += d.amount_paid;
   }
-  const topVehicles = Object.values(byVehicle).sort((a, b) => b.cost - a.cost).slice(0, 8);
+  for (const f of fuelLoads ?? []) {
+    if (!f.total_cost) continue;
+    const r = ensureVeh(f.vehicle_id, f.vehicle as unknown as { brand: string; model: string; plate: string } | null);
+    r.fuel += f.total_cost; r.total += f.total_cost;
+  }
+  const topVehicles = Object.values(byVehicle).sort((a, b) => b.total - a.total);
 
-  // Costo por obra del mes
+  // Costo por obra del mes (mantenciones + documentos + combustible)
   const projName: Record<string, string> = {};
   for (const p of projects ?? []) projName[p.id] = p.name;
   const byProject: Record<string, number> = {};
@@ -81,6 +88,11 @@ export default async function MonthlyReportPage({
     for (const d of docs ?? []) {
       if (d.amount_paid && d.issue_date && d.vehicle_id === a.vehicle_id && inInterval(d.issue_date, a.start_date, a.end_date ?? last)) {
         byProject[a.project_id] = (byProject[a.project_id] ?? 0) + d.amount_paid;
+      }
+    }
+    for (const f of fuelLoads ?? []) {
+      if (f.total_cost && f.vehicle_id === a.vehicle_id && inInterval(f.fuel_date, a.start_date, a.end_date ?? last)) {
+        byProject[a.project_id] = (byProject[a.project_id] ?? 0) + f.total_cost;
       }
     }
   }
@@ -145,23 +157,49 @@ export default async function MonthlyReportPage({
         {/* Desglose de gasto */}
         <div className={`${card} p-5`}>
           <h3 className="font-semibold text-gray-800 mb-3">Desglose de Gasto</h3>
-          <div className="grid grid-cols-2 gap-4">
-            <div className="bg-orange-50 rounded-lg p-4"><p className="text-xs text-orange-600 font-medium">Mantenciones</p><p className="text-xl font-bold text-orange-700 mt-1">{formatCurrency(maintCost)}</p></div>
-            <div className="bg-blue-50 rounded-lg p-4"><p className="text-xs text-blue-600 font-medium">Documentos</p><p className="text-xl font-bold text-blue-700 mt-1">{formatCurrency(docCost)}</p></div>
+          <div className="grid grid-cols-3 gap-4">
+            <div className="bg-orange-50 rounded-lg p-4"><p className="text-xs text-orange-600 font-medium">Mantenciones</p><p className="text-lg md:text-xl font-bold text-orange-700 mt-1">{formatCurrency(maintCost)}</p></div>
+            <div className="bg-green-50 rounded-lg p-4"><p className="text-xs text-green-600 font-medium">Combustible</p><p className="text-lg md:text-xl font-bold text-green-700 mt-1">{formatCurrency(fuelCost)}</p></div>
+            <div className="bg-blue-50 rounded-lg p-4"><p className="text-xs text-blue-600 font-medium">Documentos</p><p className="text-lg md:text-xl font-bold text-blue-700 mt-1">{formatCurrency(docCost)}</p></div>
           </div>
         </div>
 
-        {/* Top vehículos */}
+        {/* Gasto por vehículo (detallado) */}
         {topVehicles.length > 0 && (
           <div className={card}>
-            <div className="p-5 border-b border-gray-100"><h3 className="font-semibold text-gray-800">Gasto por Vehículo</h3></div>
-            <div className="divide-y divide-gray-50">
-              {topVehicles.map((v, i) => (
-                <div key={i} className="px-5 py-2.5 flex items-center justify-between">
-                  <p className="text-sm text-gray-800">{v.name}</p>
-                  <span className="font-semibold text-construserv-orange">{formatCurrency(v.cost)}</span>
-                </div>
-              ))}
+            <div className="p-5 border-b border-gray-100"><h3 className="font-semibold text-gray-800">Detalle de Gasto por Vehículo</h3></div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm min-w-[520px]">
+                <thead>
+                  <tr className="bg-gray-50 text-gray-500">
+                    <th className="text-left px-5 py-2.5 font-medium">Vehículo</th>
+                    <th className="text-right px-3 py-2.5 font-medium">Mantención</th>
+                    <th className="text-right px-3 py-2.5 font-medium">Combustible</th>
+                    <th className="text-right px-3 py-2.5 font-medium">Documentos</th>
+                    <th className="text-right px-5 py-2.5 font-medium">Total</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-50">
+                  {topVehicles.map((v, i) => (
+                    <tr key={i}>
+                      <td className="px-5 py-2.5 text-gray-800">{v.name}</td>
+                      <td className="px-3 py-2.5 text-right text-gray-600">{formatCurrency(v.maint)}</td>
+                      <td className="px-3 py-2.5 text-right text-gray-600">{formatCurrency(v.fuel)}</td>
+                      <td className="px-3 py-2.5 text-right text-gray-600">{formatCurrency(v.docs)}</td>
+                      <td className="px-5 py-2.5 text-right font-semibold text-construserv-orange">{formatCurrency(v.total)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+                <tfoot>
+                  <tr className="border-t border-gray-200 bg-gray-50">
+                    <td className="px-5 py-2.5 font-semibold text-gray-800">Total flota</td>
+                    <td className="px-3 py-2.5 text-right font-semibold text-gray-800">{formatCurrency(maintCost)}</td>
+                    <td className="px-3 py-2.5 text-right font-semibold text-gray-800">{formatCurrency(fuelCost)}</td>
+                    <td className="px-3 py-2.5 text-right font-semibold text-gray-800">{formatCurrency(docCost)}</td>
+                    <td className="px-5 py-2.5 text-right font-bold text-construserv-orange">{formatCurrency(totalCost)}</td>
+                  </tr>
+                </tfoot>
+              </table>
             </div>
           </div>
         )}
