@@ -11,8 +11,22 @@ interface Vehicle {
   model: string;
 }
 
+interface Driver {
+  id: string;
+  vehicle_id: string;
+  driver_name: string;
+  driver_rut?: string | null;
+  driver_phone?: string | null;
+  driver_license?: string | null;
+  license_type?: string | null;
+  license_expiry?: string | null;
+  start_date: string;
+  notes?: string | null;
+}
+
 interface Props {
   vehicles: Vehicle[];
+  driver?: Driver;
 }
 
 const LICENSE_TYPES = [
@@ -26,21 +40,22 @@ const LICENSE_TYPES = [
   { value: "E",  label: "E — Maquinaria pesada" },
 ];
 
-export default function DriverForm({ vehicles }: Props) {
+export default function DriverForm({ vehicles, driver }: Props) {
   const router = useRouter();
+  const isEditing = !!driver;
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const [form, setForm] = useState({
-    vehicle_id: "",
-    driver_name: "",
-    driver_rut: "",
-    driver_phone: "",
-    driver_license: "",
-    license_type: "",
-    license_expiry: "",
-    start_date: new Date().toISOString().split("T")[0],
-    notes: "",
+    vehicle_id: driver?.vehicle_id ?? "",
+    driver_name: driver?.driver_name ?? "",
+    driver_rut: driver?.driver_rut ?? "",
+    driver_phone: driver?.driver_phone ?? "",
+    driver_license: driver?.driver_license ?? "",
+    license_type: driver?.license_type ?? "",
+    license_expiry: driver?.license_expiry ?? "",
+    start_date: driver?.start_date ?? new Date().toISOString().split("T")[0],
+    notes: driver?.notes ?? "",
   });
 
   function set(field: string, value: string) {
@@ -70,12 +85,22 @@ export default function DriverForm({ vehicles }: Props) {
       license_expiry: form.license_expiry || null,
       start_date: form.start_date,
       notes: form.notes.trim() || null,
-      created_by: user.id,
     };
+
+    if (isEditing) {
+      const { error: dbError } = await supabase
+        .from("vehicle_drivers")
+        .update(payload)
+        .eq("id", driver.id);
+      if (dbError) { setError(dbError.message); setLoading(false); return; }
+      router.push(`/dashboard/conductores/${driver.id}`);
+      router.refresh();
+      return;
+    }
 
     const { data, error: dbError } = await supabase
       .from("vehicle_drivers")
-      .insert(payload)
+      .insert({ ...payload, created_by: user.id })
       .select("id")
       .single();
 
@@ -234,7 +259,7 @@ export default function DriverForm({ vehicles }: Props) {
           disabled={loading}
           className="px-5 py-2 text-sm font-medium text-white bg-construserv-orange rounded-lg hover:bg-orange-600 transition disabled:opacity-50"
         >
-          {loading ? "Guardando..." : "Guardar conductor"}
+          {loading ? "Guardando..." : isEditing ? "Guardar cambios" : "Guardar conductor"}
         </button>
       </div>
     </form>

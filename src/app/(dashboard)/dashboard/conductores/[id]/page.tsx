@@ -10,6 +10,7 @@ import {
   Truck,
   HardHat,
   AlertTriangle,
+  Pencil,
 } from "lucide-react";
 import { formatDate, getDaysUntil, getAlertColor } from "@/lib/utils";
 import LinkDriverProfile from "@/components/drivers/LinkDriverProfile";
@@ -75,6 +76,13 @@ export default async function DriverDetailPage({
 
   if (!driver) notFound();
 
+  const { data: { user } } = await supabase.auth.getUser();
+  let canEdit = false;
+  if (user) {
+    const { data: prof } = await supabase.from("profiles").select("role").eq("id", user.id).single();
+    canEdit = prof?.role === "admin" || prof?.role === "editor";
+  }
+
   // Todos los registros del mismo conductor (misma persona) para historial completo
   const [{ data: history }, { data: allProfiles }] = await Promise.all([
     supabase
@@ -112,6 +120,15 @@ export default async function DriverDetailPage({
             <p className="text-gray-500 text-sm">RUT: {driver.driver_rut}</p>
           )}
         </div>
+        {canEdit && (
+          <Link
+            href={`/dashboard/conductores/${id}/editar`}
+            className="flex items-center gap-2 border border-gray-300 text-gray-700 px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-50 transition"
+          >
+            <Pencil className="w-4 h-4" />
+            Editar
+          </Link>
+        )}
       </div>
 
       {/* Alerta vencimiento licencia */}
