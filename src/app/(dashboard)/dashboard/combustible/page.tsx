@@ -1,6 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import Link from "next/link";
-import { Fuel, Plus, TrendingUp, DollarSign } from "lucide-react";
+import { Fuel, Plus, TrendingUp, DollarSign, Pencil } from "lucide-react";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import { fuelMetrics, type FuelSummary } from "@/lib/fuel";
 
@@ -9,11 +9,18 @@ export const metadata = { title: "Combustible" };
 export default async function FuelPage() {
   const supabase = await createClient();
 
-  const [{ data: loads }, { data: summaries }, { data: vehicles }] = await Promise.all([
+  const [{ data: loads }, { data: summaries }, { data: vehicles }, { data: { user } }] = await Promise.all([
     supabase.from("fuel_loads").select("*, vehicle:vehicles(id, brand, model, plate, usage_unit)").order("fuel_date", { ascending: false }).limit(50),
     supabase.from("fuel_summary").select("*"),
     supabase.from("vehicles").select("id, brand, model, plate, usage_unit"),
+    supabase.auth.getUser(),
   ]);
+
+  let canEdit = false;
+  if (user) {
+    const { data: prof } = await supabase.from("profiles").select("role").eq("id", user.id).single();
+    canEdit = prof?.role === "admin" || prof?.role === "editor";
+  }
 
   const vehMap: Record<string, { name: string; unit: "km" | "horas" }> = {};
   for (const v of vehicles ?? []) vehMap[v.id] = { name: `${v.brand} ${v.model} (${v.plate})`, unit: v.usage_unit ?? "km" };
@@ -94,8 +101,8 @@ export default async function FuelPage() {
             loads.map((l) => {
               const v = l.vehicle as { id: string; brand: string; model: string; plate: string; usage_unit: string } | null;
               const us = v?.usage_unit === "horas" ? "h" : "km";
-              return (
-                <div key={l.id} className="px-5 py-3 flex items-center justify-between">
+              const inner = (
+                <>
                   <div>
                     <p className="text-sm font-medium text-gray-800">
                       {v ? `${v.brand} ${v.model} (${v.plate})` : "—"}
@@ -106,7 +113,19 @@ export default async function FuelPage() {
                       {l.station ? ` · ${l.station}` : ""}
                     </p>
                   </div>
-                  <span className="text-sm font-semibold text-gray-800">{formatCurrency(l.total_cost)}</span>
+                  <span className="flex items-center gap-2 text-sm font-semibold text-gray-800">
+                    {formatCurrency(l.total_cost)}
+                    {canEdit && <Pencil className="w-3.5 h-3.5 text-gray-300" />}
+                  </span>
+                </>
+              );
+              return canEdit ? (
+                <Link key={l.id} href={`/dashboard/combustible/${l.id}/editar`} className="px-5 py-3 flex items-center justify-between hover:bg-gray-50 transition">
+                  {inner}
+                </Link>
+              ) : (
+                <div key={l.id} className="px-5 py-3 flex items-center justify-between">
+                  {inner}
                 </div>
               );
             })

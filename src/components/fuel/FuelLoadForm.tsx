@@ -14,23 +14,36 @@ interface Vehicle {
   usage_unit?: "km" | "horas";
 }
 
+interface FuelLoad {
+  id: string;
+  vehicle_id: string;
+  fuel_date: string;
+  liters: number;
+  total_cost: number;
+  km_at_load?: number | null;
+  station?: string | null;
+  notes?: string | null;
+}
+
 interface Props {
   vehicles: Vehicle[];
   defaultVehicleId?: string;
   driverName?: string | null;
+  fuelLoad?: FuelLoad;
 }
 
-export default function FuelLoadForm({ vehicles, defaultVehicleId, driverName }: Props) {
+export default function FuelLoadForm({ vehicles, defaultVehicleId, driverName, fuelLoad }: Props) {
   const router = useRouter();
   const supabase = createClient();
-  const [vehicleId, setVehicleId] = useState(defaultVehicleId ?? "");
+  const isEditing = !!fuelLoad;
+  const [vehicleId, setVehicleId] = useState(fuelLoad?.vehicle_id ?? defaultVehicleId ?? "");
   const [form, setForm] = useState({
-    fuel_date: new Date().toISOString().split("T")[0],
-    liters: "",
-    total_cost: "",
-    km_at_load: "",
-    station: "",
-    notes: "",
+    fuel_date: fuelLoad?.fuel_date ?? new Date().toISOString().split("T")[0],
+    liters: fuelLoad ? String(fuelLoad.liters) : "",
+    total_cost: fuelLoad ? String(fuelLoad.total_cost) : "",
+    km_at_load: fuelLoad?.km_at_load != null ? String(fuelLoad.km_at_load) : "",
+    station: fuelLoad?.station ?? "",
+    notes: fuelLoad?.notes ?? "",
   });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -50,7 +63,8 @@ export default function FuelLoadForm({ vehicles, defaultVehicleId, driverName }:
     if (!form.liters || Number(form.liters) <= 0) { setError("Ingresa los litros cargados."); return; }
 
     const km = form.km_at_load ? Number(form.km_at_load) : null;
-    if (km !== null && selectedVehicle?.current_km != null && km < selectedVehicle.current_km) {
+    // Solo validar km bajo al crear (al editar se permite corregir hacia abajo)
+    if (!isEditing && km !== null && selectedVehicle?.current_km != null && km < selectedVehicle.current_km) {
       setError(`El ${unitShort} ingresado (${km.toLocaleString("es-CL")}) es menor al registrado en el vehículo (${selectedVehicle.current_km.toLocaleString("es-CL")} ${unitShort}). Verifica el valor.`);
       return;
     }
@@ -58,21 +72,33 @@ export default function FuelLoadForm({ vehicles, defaultVehicleId, driverName }:
     setSaving(true);
     const { data: { user } } = await supabase.auth.getUser();
 
-    const { error: insErr } = await supabase.from("fuel_loads").insert({
+    const payload = {
       vehicle_id: vehicleId,
       fuel_date: form.fuel_date,
       liters: Number(form.liters),
       total_cost: form.total_cost ? Number(form.total_cost) : 0,
       km_at_load: km,
       station: form.station.trim() || null,
+      notes: form.notes.trim() || null,
+    };
+
+    if (isEditing) {
+      const { error: updErr } = await supabase.from("fuel_loads").update(payload).eq("id", fuelLoad.id);
+      if (updErr) { setError(updErr.message); setSaving(false); return; }
+      router.push("/dashboard/combustible");
+      router.refresh();
+      return;
+    }
+
+    const { error: insErr } = await supabase.from("fuel_loads").insert({
+      ...payload,
       driver_name: driverName ?? null,
       recorded_by: user?.id ?? null,
-      notes: form.notes.trim() || null,
     });
 
     if (insErr) { setError(insErr.message); setSaving(false); return; }
 
-    // Registrar lectura de odómetro y actualizar km del vehículo
+    // Registrar lectura de odómetro y actualizar km del vehículo (solo al crear)
     if (km !== null) {
       await supabase.from("odometer_readings").insert({
         vehicle_id: vehicleId,
@@ -136,7 +162,7 @@ export default function FuelLoadForm({ vehicles, defaultVehicleId, driverName }:
         <button type="button" onClick={() => router.back()} className="px-5 py-2.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition">Cancelar</button>
         <button type="submit" disabled={saving} className="flex items-center gap-2 px-5 py-2.5 text-sm font-medium text-white bg-construserv-orange rounded-lg hover:bg-orange-600 transition disabled:opacity-50">
           {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Fuel className="w-4 h-4" />}
-          {saving ? "Guardando..." : "Registrar carga"}
+          {saving ? "Guardando..." : isEditing ? "Guardar cambios" : "Registrar carga"}
         </button>
       </div>
     </form>
