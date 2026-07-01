@@ -85,26 +85,47 @@ export default function FuelLoadForm({ vehicles, defaultVehicleId, driverName, f
     if (isEditing) {
       const { error: updErr } = await supabase.from("fuel_loads").update(payload).eq("id", fuelLoad.id);
       if (updErr) { setError(updErr.message); setSaving(false); return; }
+
+      // Sincronizar la lectura de odómetro vinculada a esta carga
+      const { data: linked } = await supabase.from("odometer_readings").select("id").eq("fuel_load_id", fuelLoad.id).maybeSingle();
+      if (km !== null) {
+        if (linked) {
+          await supabase.from("odometer_readings").update({ vehicle_id: vehicleId, km, reading_date: form.fuel_date }).eq("id", linked.id);
+        } else {
+          await supabase.from("odometer_readings").insert({
+            vehicle_id: vehicleId, km, reading_date: form.fuel_date, source: "fuel",
+            fuel_load_id: fuelLoad.id, recorded_by: user?.id ?? null,
+          });
+        }
+        // Subir el km actual del vehículo si corresponde
+        const { data: veh } = await supabase.from("vehicles").select("current_km").eq("id", vehicleId).single();
+        if (veh && km >= veh.current_km) await supabase.from("vehicles").update({ current_km: km }).eq("id", vehicleId);
+      } else if (linked) {
+        // Se quitó el km: eliminar la lectura vinculada
+        await supabase.from("odometer_readings").delete().eq("id", linked.id);
+      }
+
       router.push("/dashboard/combustible");
       router.refresh();
       return;
     }
 
-    const { error: insErr } = await supabase.from("fuel_loads").insert({
+    const { data: inserted, error: insErr } = await supabase.from("fuel_loads").insert({
       ...payload,
       driver_name: driverName ?? null,
       recorded_by: user?.id ?? null,
-    });
+    }).select("id").single();
 
     if (insErr) { setError(insErr.message); setSaving(false); return; }
 
-    // Registrar lectura de odómetro y actualizar km del vehículo (solo al crear)
+    // Registrar lectura de odómetro vinculada y actualizar km del vehículo (solo al crear)
     if (km !== null) {
       await supabase.from("odometer_readings").insert({
         vehicle_id: vehicleId,
         km,
         reading_date: form.fuel_date,
         source: "fuel",
+        fuel_load_id: inserted?.id ?? null,
         recorded_by: user?.id ?? null,
         driver_name: driverName ?? null,
       });

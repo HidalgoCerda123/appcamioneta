@@ -134,12 +134,12 @@ export default async function DashboardPage() {
         detail: parts.join(" · "),
       });
     }
-    // Mantenciones programadas por km objetivo (next_service_km) — la más reciente por vehículo+tipo
+    // Mantenciones programadas por km objetivo — se toma la mantención MÁS RECIENTE de
+    // cada vehículo+tipo (aunque no tenga próximo km); solo se alerta si esa tiene next_service_km
     const [{ data: maintKm }, { data: settings }] = await Promise.all([
       supabase
         .from("maintenances")
         .select("vehicle_id, type, next_service_km, vehicle:vehicles(id, brand, model, plate, current_km, usage_unit)")
-        .not("next_service_km", "is", null)
         .order("date", { ascending: false }),
       supabase.from("app_settings").select("km_service_lead, hours_service_lead").eq("id", "global").maybeSingle(),
     ]);
@@ -149,7 +149,8 @@ export default async function DashboardPage() {
     for (const m of maintKm ?? []) {
       const key = `${m.vehicle_id}|${m.type}`;
       if (seenKm.has(key)) continue;
-      seenKm.add(key);
+      seenKm.add(key); // la más reciente de este tipo
+      if (m.next_service_km == null) continue; // la última mantención no definió próximo km
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const v = m.vehicle as any;
       if (!v) continue;

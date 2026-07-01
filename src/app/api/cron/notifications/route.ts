@@ -272,7 +272,7 @@ export async function GET(req: NextRequest) {
   {
     const [{ data: vehRows2 }, { data: maintKmRows }, { data: settings }] = await Promise.all([
       supabase.from("vehicles").select("id, brand, model, plate, current_km, usage_unit"),
-      supabase.from("maintenances").select("vehicle_id, type, next_service_km, date").not("next_service_km", "is", null).order("date", { ascending: false }),
+      supabase.from("maintenances").select("vehicle_id, type, next_service_km, date").order("date", { ascending: false }),
       supabase.from("app_settings").select("km_service_lead, hours_service_lead").eq("id", "global").maybeSingle(),
     ]);
     const lead = { km: settings?.km_service_lead ?? 200, horas: settings?.hours_service_lead ?? 20 };
@@ -283,7 +283,8 @@ export async function GET(req: NextRequest) {
     for (const m of maintKmRows ?? []) {
       const key = `${m.vehicle_id}|${m.type}`;
       if (seen.has(key)) continue;
-      seen.add(key);
+      seen.add(key); // la más reciente de este tipo
+      if (m.next_service_km == null) continue; // la última no definió próximo km
       const veh = vmap[m.vehicle_id];
       if (!veh) continue;
       const st = kmServiceStatus(m.next_service_km, veh.current_km, veh.usage_unit ?? "km", lead);

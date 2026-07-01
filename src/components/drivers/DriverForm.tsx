@@ -88,11 +88,29 @@ export default function DriverForm({ vehicles, driver }: Props) {
     };
 
     if (isEditing) {
+      // Actualiza el registro actual completo (datos personales + asignación)
       const { error: dbError } = await supabase
         .from("vehicle_drivers")
         .update(payload)
         .eq("id", driver.id);
       if (dbError) { setError(dbError.message); setLoading(false); return; }
+
+      // Propaga los datos PERSONALES al resto del historial del mismo conductor
+      // (se identifican por el nombre original antes de este cambio)
+      const personal = {
+        driver_name: payload.driver_name,
+        driver_rut: payload.driver_rut,
+        driver_phone: payload.driver_phone,
+        driver_license: payload.driver_license,
+        license_type: payload.license_type,
+        license_expiry: payload.license_expiry,
+      };
+      await supabase
+        .from("vehicle_drivers")
+        .update(personal)
+        .eq("driver_name", driver.driver_name)
+        .neq("id", driver.id);
+
       router.push(`/dashboard/conductores/${driver.id}`);
       router.refresh();
       return;
