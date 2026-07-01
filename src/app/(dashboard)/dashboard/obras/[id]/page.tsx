@@ -39,20 +39,26 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
   const vehicleIds = [...new Set((assignments ?? []).map((a) => a.vehicle_id))];
 
   // Costos de los vehículos que pasaron por la obra
-  const [{ data: maints }, { data: docs }] = vehicleIds.length > 0
+  const [{ data: maints }, { data: docs }, { data: fuel }] = vehicleIds.length > 0
     ? await Promise.all([
         supabase.from("maintenances").select("vehicle_id, date, total_cost").in("vehicle_id", vehicleIds),
         supabase.from("vehicle_documents").select("vehicle_id, issue_date, amount_paid").in("vehicle_id", vehicleIds),
+        supabase.from("fuel_loads").select("vehicle_id, fuel_date, total_cost").in("vehicle_id", vehicleIds),
       ])
-    : [{ data: [] }, { data: [] }];
+    : [{ data: [] }, { data: [] }, { data: [] }];
 
-  // Asignar costos por intervalo de cada asignación a la obra
+  // Asignar costos por intervalo de cada asignación a la obra (mantención + combustible + documentos)
   const costByVehicle: Record<string, number> = {};
   for (const a of assignments ?? []) {
     const end = a.end_date;
     for (const m of maints ?? []) {
       if (m.vehicle_id === a.vehicle_id && inInterval(m.date, a.start_date, end ?? today)) {
         costByVehicle[a.vehicle_id] = (costByVehicle[a.vehicle_id] ?? 0) + (m.total_cost ?? 0);
+      }
+    }
+    for (const f of fuel ?? []) {
+      if (f.total_cost && f.vehicle_id === a.vehicle_id && inInterval(f.fuel_date, a.start_date, end ?? today)) {
+        costByVehicle[a.vehicle_id] = (costByVehicle[a.vehicle_id] ?? 0) + f.total_cost;
       }
     }
     for (const d of docs ?? []) {
@@ -122,9 +128,9 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
           )}
         </div>
         <div className="bg-construserv-dark rounded-xl shadow-sm p-6 flex flex-col justify-center">
-          <p className="text-xs text-gray-300 uppercase tracking-wide flex items-center gap-1"><DollarSign className="w-3 h-3" /> Costo de maquinaria en la obra</p>
+          <p className="text-xs text-gray-300 uppercase tracking-wide flex items-center gap-1"><DollarSign className="w-3 h-3" /> Costo vehicular en obra</p>
           <p className="text-3xl font-bold text-white mt-2">{formatCurrency(totalCost)}</p>
-          <p className="text-xs text-gray-400 mt-1">Mantenciones + documentos de los vehículos asignados</p>
+          <p className="text-xs text-gray-400 mt-1">Mantenciones + combustible + documentos de los vehículos asignados</p>
         </div>
       </div>
 
