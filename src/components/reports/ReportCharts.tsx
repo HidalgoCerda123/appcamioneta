@@ -17,9 +17,15 @@ import {
 const COLORS = ["#E8500A", "#3B82F6", "#10B981", "#F59E0B", "#8B5CF6", "#EF4444", "#06B6D4", "#84CC16"];
 
 interface Props {
-  monthlySpend: { mes: string; mantenciones: number; documentos: number }[];
+  monthlySpend: { mes: string; mantenciones: number; combustible: number; documentos: number }[];
   spendByType: { name: string; total: number }[];
 }
+
+const MONTHLY_LABELS: Record<string, string> = {
+  mantenciones: "Mantenciones",
+  combustible: "Combustible",
+  documentos: "Documentos",
+};
 
 function formatCLPShort(value: number) {
   if (value >= 1_000_000) return `$${(value / 1_000_000).toFixed(1)}M`;
@@ -33,7 +39,7 @@ export default function ReportCharts({ monthlySpend, spendByType }: Props) {
       {/* Gasto mensual */}
       <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-6">
         <h3 className="font-semibold text-gray-800 mb-4">Gasto Mensual {new Date().getFullYear()}</h3>
-        {monthlySpend.every((m) => m.mantenciones === 0 && m.documentos === 0) ? (
+        {monthlySpend.every((m) => m.mantenciones === 0 && m.combustible === 0 && m.documentos === 0) ? (
           <p className="text-gray-400 text-sm text-center py-12">Sin datos para este año</p>
         ) : (
           <ResponsiveContainer width="100%" height={220}>
@@ -41,9 +47,10 @@ export default function ReportCharts({ monthlySpend, spendByType }: Props) {
               <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
               <XAxis dataKey="mes" tick={{ fontSize: 11 }} />
               <YAxis tickFormatter={formatCLPShort} tick={{ fontSize: 11 }} width={50} />
-              <Tooltip formatter={(v: number, name: string) => [`$${v.toLocaleString("es-CL")}`, name === "mantenciones" ? "Mantenciones" : "Documentos"]} />
-              <Legend iconType="square" iconSize={8} wrapperStyle={{ fontSize: 11 }} formatter={(v) => v === "mantenciones" ? "Mantenciones" : "Documentos"} />
+              <Tooltip formatter={(v: number, name: string) => [`$${v.toLocaleString("es-CL")}`, MONTHLY_LABELS[name] ?? name]} />
+              <Legend iconType="square" iconSize={8} wrapperStyle={{ fontSize: 11 }} formatter={(v) => MONTHLY_LABELS[v] ?? v} />
               <Bar dataKey="mantenciones" stackId="a" fill="#E8500A" />
+              <Bar dataKey="combustible" stackId="a" fill="#10B981" />
               <Bar dataKey="documentos" stackId="a" fill="#3B82F6" radius={[4, 4, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>

@@ -97,7 +97,8 @@ export default async function VehicleDetailPage({
   const status = statusConfig[vehicle.status as keyof typeof statusConfig];
   const totalMaintenance = maintenances?.reduce((sum, m) => sum + m.total_cost, 0) ?? 0;
   const totalDocuments = documents?.reduce((sum, d) => sum + (d.amount_paid ?? 0), 0) ?? 0;
-  const totalSpend = totalMaintenance + totalDocuments;
+  const totalFuel = Number(fuelSummary?.total_cost ?? 0);
+  const totalSpend = totalMaintenance + totalDocuments + totalFuel;
 
   // Última mantención por tipo (para planes preventivos); maintenances viene ordenado por fecha desc
   const lastByType: Record<string, LastService> = {};

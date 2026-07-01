@@ -20,17 +20,19 @@ export default async function ReportsPage({
   const prevYear = selectedYear - 1;
   const nextYear = selectedYear + 1;
 
-  const [{ data: maintenances }, { data: documents }, { data: allVehicles }, { data: spans }] = await Promise.all([
+  const [{ data: maintenances }, { data: documents }, { data: allVehicles }, { data: spans }, { data: fuelLoads }] = await Promise.all([
     supabase.from("maintenances").select("*, vehicle:vehicles(plate, brand, model, type)").order("date"),
     supabase.from("vehicle_documents").select("*, vehicle:vehicles(plate, brand, model)").order("issue_date"),
     supabase.from("vehicles").select("id, brand, model, plate, current_km, usage_unit"),
     supabase.from("odometer_span").select("vehicle_id, min_km, max_km"),
+    supabase.from("fuel_loads").select("vehicle_id, total_cost, fuel_date, vehicle:vehicles(plate, brand, model)"),
   ]);
 
   // ── Gastos por mes ──────────────────────────────────────────────────────────
   const monthlySpend = Array.from({ length: 12 }, (_, i) => ({
     mes: new Date(selectedYear, i).toLocaleString("es-CL", { month: "short" }),
     mantenciones: 0,
+    combustible: 0,
     documentos: 0,
   }));
 
@@ -46,6 +48,14 @@ export default async function ReportsPage({
     const refDate = d.issue_date ? new Date(d.issue_date) : null;
     if (refDate && refDate.getFullYear() === selectedYear) {
       monthlySpend[refDate.getMonth()].documentos += d.amount_paid;
+    }
+  });
+
+  fuelLoads?.forEach((f) => {
+    if (!f.total_cost) return;
+    const date = new Date(f.fuel_date);
+    if (date.getFullYear() === selectedYear) {
+      monthlySpend[date.getMonth()].combustible += f.total_cost;
     }
   });
 
@@ -76,21 +86,28 @@ export default async function ReportsPage({
     spendByType[label] = (spendByType[label] ?? 0) + d.amount_paid;
   });
 
+  fuelLoads?.forEach((f) => {
+    if (!f.total_cost) return;
+    if (new Date(f.fuel_date).getFullYear() !== selectedYear) return;
+    spendByType["Combustible"] = (spendByType["Combustible"] ?? 0) + f.total_cost;
+  });
+
   const spendByTypeData = Object.entries(spendByType)
     .map(([name, total]) => ({ name, total }))
     .sort((a, b) => b.total - a.total);
 
   // ── Top vehículos ────────────────────────────────────────────────────────────
-  const spendByVehicle: Record<string, { name: string; mantenciones: number; documentos: number }> = {};
+  const spendByVehicle: Record<string, { name: string; mantenciones: number; combustible: number; documentos: number }> = {};
+  function ensureVehSpend(id: string, v: { plate: string; brand: string; model: string } | null) {
+    if (!spendByVehicle[id]) spendByVehicle[id] = { name: v ? `${v.brand} ${v.model} (${v.plate})` : "—", mantenciones: 0, combustible: 0, documentos: 0 };
+    return spendByVehicle[id];
+  }
 
   maintenances?.forEach((m) => {
     if (new Date(m.date).getFullYear() !== selectedYear) return;
     const v = m.vehicle as { plate: string; brand: string; model: string };
     if (!v) return;
-    if (!spendByVehicle[m.vehicle_id]) {
-      spendByVehicle[m.vehicle_id] = { name: `${v.brand} ${v.model} (${v.plate})`, mantenciones: 0, documentos: 0 };
-    }
-    spendByVehicle[m.vehicle_id].mantenciones += m.total_cost;
+    ensureVehSpend(m.vehicle_id, v).mantenciones += m.total_cost;
   });
 
   documents?.forEach((d) => {
@@ -99,14 +116,18 @@ export default async function ReportsPage({
     if (!refDate || refDate.getFullYear() !== selectedYear) return;
     const v = d.vehicle as { plate: string; brand: string; model: string };
     if (!v) return;
-    if (!spendByVehicle[d.vehicle_id]) {
-      spendByVehicle[d.vehicle_id] = { name: `${v.brand} ${v.model} (${v.plate})`, mantenciones: 0, documentos: 0 };
-    }
-    spendByVehicle[d.vehicle_id].documentos += d.amount_paid;
+    ensureVehSpend(d.vehicle_id, v).documentos += d.amount_paid;
+  });
+
+  fuelLoads?.forEach((f) => {
+    if (!f.total_cost) return;
+    if (new Date(f.fuel_date).getFullYear() !== selectedYear) return;
+    const v = f.vehicle as unknown as { plate: string; brand: string; model: string } | null;
+    ensureVehSpend(f.vehicle_id, v).combustible += f.total_cost;
   });
 
   const topVehicles = Object.values(spendByVehicle)
-    .map((v) => ({ ...v, total: v.mantenciones + v.documentos }))
+    .map((v) => ({ ...v, total: v.mantenciones + v.combustible + v.documentos }))
     .sort((a, b) => b.total - a.total)
     .slice(0, 5);
 
@@ -122,10 +143,15 @@ export default async function ReportsPage({
     })
     .reduce((sum, d) => sum + (d.amount_paid ?? 0), 0) ?? 0;
 
-  const totalYearSpend = maintenanceYearSpend + docYearSpend;
+  const fuelYearSpend = fuelLoads
+    ?.filter((f) => new Date(f.fuel_date).getFullYear() === selectedYear && f.total_cost)
+    .reduce((sum, f) => sum + (f.total_cost ?? 0), 0) ?? 0;
+
+  const totalYearSpend = maintenanceYearSpend + fuelYearSpend + docYearSpend;
   const totalAllTimeSpend =
     (maintenances?.reduce((sum, m) => sum + m.total_cost, 0) ?? 0) +
-    (documents?.reduce((sum, d) => sum + (d.amount_paid ?? 0), 0) ?? 0);
+    (documents?.reduce((sum, d) => sum + (d.amount_paid ?? 0), 0) ?? 0) +
+    (fuelLoads?.reduce((sum, f) => sum + (f.total_cost ?? 0), 0) ?? 0);
 
   const expiredDocs = documents?.filter((d) => new Date(d.expiry_date) < new Date()).length ?? 0;
 
@@ -133,6 +159,7 @@ export default async function ReportsPage({
   const spendAllByVehicle: Record<string, number> = {};
   maintenances?.forEach((m) => { spendAllByVehicle[m.vehicle_id] = (spendAllByVehicle[m.vehicle_id] ?? 0) + m.total_cost; });
   documents?.forEach((d) => { if (d.amount_paid) spendAllByVehicle[d.vehicle_id] = (spendAllByVehicle[d.vehicle_id] ?? 0) + d.amount_paid; });
+  fuelLoads?.forEach((f) => { if (f.total_cost) spendAllByVehicle[f.vehicle_id] = (spendAllByVehicle[f.vehicle_id] ?? 0) + f.total_cost; });
 
   const usageRange: Record<string, { min: number; max: number }> = {};
   (spans ?? []).forEach((r) => {
@@ -178,7 +205,7 @@ export default async function ReportsPage({
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <h2 className="text-2xl font-bold text-gray-900">Reportes</h2>
-          <p className="text-gray-500 text-sm mt-1">Incluye mantenciones y gastos en documentos</p>
+          <p className="text-gray-500 text-sm mt-1">Incluye mantenciones, combustible y gastos en documentos</p>
         </div>
         {/* Selector de año */}
         <div className="flex items-center gap-2">
@@ -233,14 +260,18 @@ export default async function ReportsPage({
       {/* Desglose año seleccionado */}
       <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5">
         <h3 className="font-semibold text-gray-800 mb-3">Desglose {selectedYear}</h3>
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-3 gap-4">
           <div className="bg-orange-50 rounded-lg p-4">
             <p className="text-xs text-orange-600 font-medium">Mantenciones</p>
-            <p className="text-xl font-bold text-orange-700 mt-1">{formatCurrency(maintenanceYearSpend)}</p>
+            <p className="text-lg md:text-xl font-bold text-orange-700 mt-1">{formatCurrency(maintenanceYearSpend)}</p>
+          </div>
+          <div className="bg-green-50 rounded-lg p-4">
+            <p className="text-xs text-green-600 font-medium">Combustible</p>
+            <p className="text-lg md:text-xl font-bold text-green-700 mt-1">{formatCurrency(fuelYearSpend)}</p>
           </div>
           <div className="bg-blue-50 rounded-lg p-4">
-            <p className="text-xs text-blue-600 font-medium">Documentos (RT, SOAP, Permisos, etc.)</p>
-            <p className="text-xl font-bold text-blue-700 mt-1">{formatCurrency(docYearSpend)}</p>
+            <p className="text-xs text-blue-600 font-medium">Documentos (RT, SOAP, etc.)</p>
+            <p className="text-lg md:text-xl font-bold text-blue-700 mt-1">{formatCurrency(docYearSpend)}</p>
           </div>
         </div>
       </div>
@@ -252,7 +283,7 @@ export default async function ReportsPage({
       <div className="bg-white rounded-xl border border-gray-100 shadow-sm">
         <div className="p-5 border-b border-gray-100">
           <h3 className="font-semibold text-gray-800">Top Vehículos por Gasto — {selectedYear}</h3>
-          <p className="text-xs text-gray-400 mt-0.5">Incluye mantenciones + documentos</p>
+          <p className="text-xs text-gray-400 mt-0.5">Incluye mantenciones + combustible + documentos</p>
         </div>
         <div className="divide-y divide-gray-50">
           {topVehicles.length === 0 ? (
@@ -267,7 +298,7 @@ export default async function ReportsPage({
                   <div>
                     <p className="text-sm font-medium text-gray-800">{v.name}</p>
                     <p className="text-xs text-gray-400">
-                      Mant: {formatCurrency(v.mantenciones)} · Docs: {formatCurrency(v.documentos)}
+                      Mant: {formatCurrency(v.mantenciones)} · Comb: {formatCurrency(v.combustible)} · Docs: {formatCurrency(v.documentos)}
                     </p>
                   </div>
                 </div>
