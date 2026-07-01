@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, Truck, Gauge, Wrench, FileText, Pencil, Clock, ClipboardCheck, Fuel, Plus } from "lucide-react";
 import { fuelMetrics } from "@/lib/fuel";
+import FuelConsumptionChart from "@/components/fuel/FuelConsumptionChart";
 import DeleteButton from "@/components/ui/DeleteButton";
 import { formatCurrency, formatDate, formatUsage, getDaysUntil, getAlertColor } from "@/lib/utils";
 import DriverSection from "@/components/vehicles/DriverSection";
@@ -75,9 +76,10 @@ export default async function VehicleDetailPage({
   const currentProject = (projAssign?.project as unknown as { id: string; name: string } | null) ?? null;
 
   // Combustible del vehículo
-  const [{ data: fuelSummary }, { data: fuelLoads }] = await Promise.all([
+  const [{ data: fuelSummary }, { data: fuelLoads }, { data: fuelChart }] = await Promise.all([
     supabase.from("fuel_summary").select("*").eq("vehicle_id", id).maybeSingle(),
     supabase.from("fuel_loads").select("id, fuel_date, liters, total_cost, km_at_load, station").eq("vehicle_id", id).order("fuel_date", { ascending: false }).limit(8),
+    supabase.from("fuel_loads").select("fuel_date, liters, total_cost, km_at_load").eq("vehicle_id", id).order("fuel_date", { ascending: true }),
   ]);
   const fuel = fuelMetrics(fuelSummary ?? null, vehicle.usage_unit);
 
@@ -321,6 +323,9 @@ export default async function VehicleDetailPage({
           )}
         </div>
       </div>
+
+      {/* Gráfico de consumo de combustible */}
+      <FuelConsumptionChart loads={fuelChart ?? []} unit={vehicle.usage_unit} />
 
       {/* Conductor */}
       <DriverSection vehicleId={id} vehicleStatus={vehicle.status} drivers={drivers ?? []} />
