@@ -2,17 +2,16 @@ import { createClient } from "@/lib/supabase/server";
 import Link from "next/link";
 import { Fuel, Plus, TrendingUp, DollarSign, Pencil } from "lucide-react";
 import { formatCurrency, formatDate } from "@/lib/utils";
-import { fuelMetrics, type FuelSummary } from "@/lib/fuel";
+import { computeFuelStats, type FuelLoadPoint } from "@/lib/fuel";
 
 export const metadata = { title: "Combustible" };
 
 export default async function FuelPage() {
   const supabase = await createClient();
 
-  const [{ data: loads }, { data: summaries }, { data: vehicles }, { data: { user } }] = await Promise.all([
-    supabase.from("fuel_loads").select("*, vehicle:vehicles(id, brand, model, plate, usage_unit)").order("fuel_date", { ascending: false }).limit(50),
-    supabase.from("fuel_summary").select("*"),
-    supabase.from("vehicles").select("id, brand, model, plate, usage_unit"),
+  // Se calcula todo desde las cargas (misma fuente y método que ficha, reportes y gráficos)
+  const [{ data: allLoads }, { data: { user } }] = await Promise.all([
+    supabase.from("fuel_loads").select("id, vehicle_id, fuel_date, liters, total_cost, km_at_load, station, vehicle:vehicles(id, brand, model, plate, usage_unit)").order("fuel_date", { ascending: false }),
     supabase.auth.getUser(),
   ]);
 
@@ -22,21 +21,24 @@ export default async function FuelPage() {
     canEdit = prof?.role === "admin" || prof?.role === "editor";
   }
 
-  const vehMap: Record<string, { name: string; unit: "km" | "horas" }> = {};
-  for (const v of vehicles ?? []) vehMap[v.id] = { name: `${v.brand} ${v.model} (${v.plate})`, unit: v.usage_unit ?? "km" };
+  const loads = allLoads ?? [];
 
-  const totalSpend = (summaries ?? []).reduce((s, r) => s + Number(r.total_cost ?? 0), 0);
-  const totalLiters = (summaries ?? []).reduce((s, r) => s + Number(r.total_liters ?? 0), 0);
+  const totalSpend = loads.reduce((s, l) => s + (l.total_cost ?? 0), 0);
+  const totalLiters = loads.reduce((s, l) => s + Number(l.liters ?? 0), 0);
 
-  // Ranking gasto por km/hora
-  const ranking = (summaries ?? [])
-    .map((r: FuelSummary) => {
-      const v = vehMap[r.vehicle_id];
-      const m = fuelMetrics(r, v?.unit ?? "km");
-      return { name: v?.name ?? "—", unit: v?.unit ?? "km", m };
-    })
-    .filter((x) => x.m && x.m.costPerUnit !== null)
-    .sort((a, b) => (b.m!.costPerUnit ?? 0) - (a.m!.costPerUnit ?? 0));
+  // Agrupar cargas por vehículo y calcular estadísticas con el método canónico
+  const byVehicle: Record<string, { name: string; unit: "km" | "horas"; points: FuelLoadPoint[] }> = {};
+  for (const l of loads) {
+    const v = l.vehicle as unknown as { id: string; brand: string; model: string; plate: string; usage_unit: string } | null;
+    if (!v) continue;
+    if (!byVehicle[v.id]) byVehicle[v.id] = { name: `${v.brand} ${v.model} (${v.plate})`, unit: (v.usage_unit as "km" | "horas") ?? "km", points: [] };
+    byVehicle[v.id].points.push({ fuel_date: l.fuel_date, liters: Number(l.liters), total_cost: l.total_cost ?? 0, km_at_load: l.km_at_load });
+  }
+
+  const ranking = Object.values(byVehicle)
+    .map((g) => ({ name: g.name, unit: g.unit, stats: computeFuelStats(g.points, g.unit) }))
+    .filter((x) => x.stats && x.stats.costPerUnit !== null)
+    .sort((a, b) => (b.stats!.costPerUnit ?? 0) - (a.stats!.costPerUnit ?? 0));
 
   return (
     <div className="space-y-6">
@@ -81,10 +83,10 @@ export default async function FuelPage() {
                 <div>
                   <p className="text-sm font-medium text-gray-800">{r.name}</p>
                   <p className="text-xs text-gray-400">
-                    {r.m!.efficiency !== null ? `${r.m!.efficiency} ${r.m!.efficiencyLabel}` : "—"} · {r.m!.liters.toLocaleString("es-CL")} L · {formatCurrency(r.m!.cost)}
+                    {r.stats!.efficiency !== null ? `${r.stats!.efficiency} ${r.stats!.efficiencyLabel}` : "—"} · {r.stats!.totalLiters.toLocaleString("es-CL")} L · {formatCurrency(r.stats!.totalCost)}
                   </p>
                 </div>
-                <span className="font-bold text-construserv-orange">{formatCurrency(r.m!.costPerUnit ?? 0)}/{r.unit === "horas" ? "h" : "km"}</span>
+                <span className="font-bold text-construserv-orange">{formatCurrency(r.stats!.costPerUnit ?? 0)}/{r.unit === "horas" ? "h" : "km"}</span>
               </div>
             ))}
           </div>
@@ -95,11 +97,11 @@ export default async function FuelPage() {
       <div className="bg-white rounded-xl border border-gray-100 shadow-sm">
         <div className="p-5 border-b border-gray-100"><h3 className="font-semibold text-gray-800">Cargas Recientes</h3></div>
         <div className="divide-y divide-gray-50">
-          {!loads || loads.length === 0 ? (
+          {loads.length === 0 ? (
             <p className="p-8 text-center text-gray-400 text-sm">Sin cargas registradas. Usa &quot;Registrar carga&quot; para empezar.</p>
           ) : (
-            loads.map((l) => {
-              const v = l.vehicle as { id: string; brand: string; model: string; plate: string; usage_unit: string } | null;
+            loads.slice(0, 50).map((l) => {
+              const v = l.vehicle as unknown as { id: string; brand: string; model: string; plate: string; usage_unit: string } | null;
               const us = v?.usage_unit === "horas" ? "h" : "km";
               const inner = (
                 <>

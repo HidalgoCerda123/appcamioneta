@@ -2,7 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, Truck, Gauge, Wrench, FileText, Pencil, Clock, ClipboardCheck, Fuel, Plus } from "lucide-react";
-import { fuelMetrics } from "@/lib/fuel";
+import { computeFuelStats } from "@/lib/fuel";
 import FuelConsumptionChart from "@/components/fuel/FuelConsumptionChart";
 import DeleteButton from "@/components/ui/DeleteButton";
 import { formatCurrency, formatDate, formatUsage, getDaysUntil, getAlertColor } from "@/lib/utils";
@@ -76,12 +76,11 @@ export default async function VehicleDetailPage({
   const currentProject = (projAssign?.project as unknown as { id: string; name: string } | null) ?? null;
 
   // Combustible del vehículo
-  const [{ data: fuelSummary }, { data: fuelLoads }, { data: fuelChart }] = await Promise.all([
-    supabase.from("fuel_summary").select("*").eq("vehicle_id", id).maybeSingle(),
+  const [{ data: fuelLoads }, { data: fuelChart }] = await Promise.all([
     supabase.from("fuel_loads").select("id, fuel_date, liters, total_cost, km_at_load, station").eq("vehicle_id", id).order("fuel_date", { ascending: false }).limit(8),
     supabase.from("fuel_loads").select("fuel_date, liters, total_cost, km_at_load").eq("vehicle_id", id).order("fuel_date", { ascending: true }),
   ]);
-  const fuel = fuelMetrics(fuelSummary ?? null, vehicle.usage_unit);
+  const fuelStats = computeFuelStats(fuelChart ?? [], vehicle.usage_unit);
 
   let canEditPlans = false;
   let isAdmin = false;
@@ -99,7 +98,7 @@ export default async function VehicleDetailPage({
   const status = statusConfig[vehicle.status as keyof typeof statusConfig];
   const totalMaintenance = maintenances?.reduce((sum, m) => sum + m.total_cost, 0) ?? 0;
   const totalDocuments = documents?.reduce((sum, d) => sum + (d.amount_paid ?? 0), 0) ?? 0;
-  const totalFuel = Number(fuelSummary?.total_cost ?? 0);
+  const totalFuel = fuelStats?.totalCost ?? 0;
   const totalSpend = totalMaintenance + totalDocuments + totalFuel;
 
   // Última mantención por tipo (para planes preventivos); maintenances viene ordenado por fecha desc
@@ -225,7 +224,7 @@ export default async function VehicleDetailPage({
             </div>
             {costPerUsage !== null && (
               <div>
-                <p className="text-xs text-gray-400 uppercase tracking-wide">Costo por {unitShort}</p>
+                <p className="text-xs text-gray-400 uppercase tracking-wide">Costo total por {unitShort}</p>
                 <p className="font-semibold text-gray-800 mt-0.5">{formatCurrency(costPerUsage)}/{unitShort}</p>
               </div>
             )}
@@ -282,23 +281,23 @@ export default async function VehicleDetailPage({
           </Link>
         </div>
         <div className="p-5 space-y-4">
-          {fuel ? (
+          {fuelStats ? (
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
               <div>
                 <p className="text-xs text-gray-400 uppercase tracking-wide">Gasto total</p>
-                <p className="font-bold text-gray-900 mt-0.5">{formatCurrency(fuel.cost)}</p>
+                <p className="font-bold text-gray-900 mt-0.5">{formatCurrency(fuelStats.totalCost)}</p>
               </div>
               <div>
                 <p className="text-xs text-gray-400 uppercase tracking-wide">Litros</p>
-                <p className="font-semibold text-gray-800 mt-0.5">{fuel.liters.toLocaleString("es-CL")} L</p>
+                <p className="font-semibold text-gray-800 mt-0.5">{fuelStats.totalLiters.toLocaleString("es-CL")} L</p>
               </div>
               <div>
-                <p className="text-xs text-gray-400 uppercase tracking-wide">Costo por {unitShort}</p>
-                <p className="font-semibold text-construserv-orange mt-0.5">{fuel.costPerUnit !== null ? `${formatCurrency(fuel.costPerUnit)}/${unitShort}` : "—"}</p>
+                <p className="text-xs text-gray-400 uppercase tracking-wide">Combustible por {unitShort}</p>
+                <p className="font-semibold text-construserv-orange mt-0.5">{fuelStats.costPerUnit !== null ? `${formatCurrency(fuelStats.costPerUnit)}/${unitShort}` : "—"}</p>
               </div>
               <div>
                 <p className="text-xs text-gray-400 uppercase tracking-wide">Rendimiento</p>
-                <p className="font-semibold text-gray-800 mt-0.5">{fuel.efficiency !== null ? `${fuel.efficiency} ${fuel.efficiencyLabel}` : "—"}</p>
+                <p className="font-semibold text-gray-800 mt-0.5">{fuelStats.efficiency !== null ? `${fuelStats.efficiency} ${fuelStats.efficiencyLabel}` : "—"}</p>
               </div>
             </div>
           ) : (
